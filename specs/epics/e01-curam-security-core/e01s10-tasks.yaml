@@ -1,0 +1,29 @@
+story_id: e01s10
+title: OSS hygiene + CI + Nix dev env
+status: failing
+bcps: 2
+tasks:
+  - id: 1
+    description: "License (Apache-2.0 + MIT dual), SECURITY.md, proto/ schema dir"
+    verify: "test -f LICENSE && test -f SECURITY.md && ls proto/"
+    risk: P2
+    status: failing
+    allure:
+      severity: normal
+      categories: ["core"]
+  - id: 2
+    description: "GitHub Actions: maturin abi3 wheel + cargo test + pytest matrix on Linux"
+    verify: "nix build .# (via flakes) / act"
+    risk: P2
+    status: failing
+    allure:
+      severity: normal
+      categories: ["core"]
+  - id: 3
+    description: "flakes.nix devShell pinning rust toolchain + python + maturin + bwrap"
+    verify: "nix develop --command cargo --version && python3 --version"
+    risk: P2
+    status: failing
+    allure:
+      severity: normal
+      categories: ["core"]

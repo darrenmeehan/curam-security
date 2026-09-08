@@ -1,0 +1,100 @@
+# SCOPE_LATEST.yaml — curam Security Core
+core_value: >-
+  A standalone Rust security core (curamsec library + curam-run cage binary
+  + verified lists pipeline) that a Python harness later calls — giving the
+  harness a real boundary (process sandbox, egress control, verified feeds)
+  without a full rewrite, and de-risking the evals-doc SLO gates.
+
+summary: >-
+  The Python POC (curam-harness) is proven and frozen. Its weak half is
+  security: injection gap, no egress boundary, no feed integrity. Instead of
+  rewriting in Rust wholesale, this initiative builds ONLY the security core
+  in Rust, in its own repo (~/code/curam-security), decoupled and
+  open-source-ready: curamsec (PyO3 module: classify, scan_context,
+  match_host, check_pkg), curam-run (standalone bwrap cage binary speaking
+  ndjson over stdio), and a lists pipeline (pinned, hashed, atomic, rev-
+  monotonic feeds loaded with verification). A basic test client (Python)
+  proves the core standalone and replays the ndjson contract (T6), so the
+  core is independently verifiable before any harness integration.
+  Harness rewiring (T7, closing the live injection gap) is a SEPARATE later
+  epic, explicitly out of scope here.
+
+in_scope:
+  - "e01s01: maturin/PyO3 skeleton; classify() callable from Python returning
+    allow/ask/deny (tracer bullet through the whole stack)"
+  - "e01s02: policy.py rules ported into Rust (aho-corasick + wrapper-strip);
+    behavior-identical parity verified by tests"
+  - "e01s03: injection defense in the core: exec-of-untrusted-content rule in
+    classify + scan_context content scanner (the *rule* — harness wiring is
+    the later epic)"
+  - "e01s04: match_host with hostname suffix trie; allow-over-deny; PSL edge
+    cases; allowlists from lists-on-disk"
+  - "e01s05: lists pipeline: pin snapshot, sha256 verify, atomic swap, load-
+    time verify, monotonic rev anti-rollback; allow-list highest-trust,
+    deny lists pinned+hashed"
+  - "e01s06: curam-run: bwrap cage, ndjson protocol v1, net on/off, timeout;
+    the boundary exists as a binary"
+  - "e01s07: country/IP blocking feeds the cage netns (geo-nft / ipset-
+    country / nftables sets) — NOT in the resolver"
+  - "e01s08: check_pkg OSV/RustSec/GHSA advice lookup (offline fixture test)"
+  - "e01s09: basic test client (Python) driving curamsec + curam-run; T6
+    ndjson contract replay by a language-agnostic stub"
+  - "e01s10: OSS hygiene: Apache-2.0/MIT, proto/ contract files, SECURITY.md,
+    GitHub Actions maturin wheel + test matrix, pinned Nix dev shell"
+
+out_of_scope:
+  - "Harness integration / T7 end-to-end gates (the executable injection gap
+    at the harness stays open until a later epic wires the core in). The
+    CORE exposes the rule; integration closes the live gap."
+  - "Phone-bridge / any daemon (this is the tokio+axum moment; new crate
+    'curamd', separate epic)"
+  - "Mirror-signing infrastructure (out-of-band age key) — only when public
+    feeds are published"
+  - "Skill/repo allowlist tooling ('bad skills' DB — ecosystem gap; fill
+    later)"
+  - "Whole-harness rewrite, journal migration, telemetry layers"
+  - "Extrasafe/seccomp embedded cage (bwrap stays the v1 cage; extrasafe is
+    the escalation path, not this cut)"
+
+constraints:
+  - "Linux >= 5.13 target (Landlock/namespaces as needed)"
+  - "abi3 wheel via maturin; one binary for supported Python 3.x"
+  - "No async: no tokio/axum (nothing server-shaped yet). bwrap v1 cage."
+  - "No DNS crate: no hickory; we match hostnames, not IPs. IP/country at
+    netns/ipset boundary."
+  - "Every verdict carry the provable chain {action, rule_id, source,
+    source_hash, evidence}; written to journal."
+  - "allow always beats deny; unknown => ask (stop hard-blocking dev infra)."
+  - "Feed integrity: pin, sha256, atomic, load-time verify, monotonic rev;
+    no TUF machinery."
+  - "Contract versions: proto/ v1, ndjson envelope v1, list.json rev field."
+  - "License: Apache-2.0/MIT for curamsec; permissive feed sources only
+    (never vendor URLhaus/GeoLite)."
+  - "Open-source-first: the ndjson contract (T6) must be testable by a
+    consumer that doesn't use our stack."
+
+success_criteria:
+  - "classify('rm -rf /') == 'deny' from Python (in-process, e01s01)"
+  - "policy port behavior-identical: scenario_deny + scenario_pii scrub still
+    pass via the core (e01s02)"
+  - "classify returns 'ask' for exec-of-untrusted-content signature;
+    scan_context flags a planted injection (e01s03)"
+  - "match_host('evil.example') == block; match_host('files.pythonhosted.org')
+    == allow; PSL edge cases (e01s04)"
+  - "a tampered list is rejected at load; a stale rev is rejected; no partial
+    list is ever visible (e01s05)"
+  - "curam-run: wget example.com denied, localhost allowed, rm /etc/passwd
+    denied, timeout -> timed_out (e01s06)"
+  - "geo set for country X is applied in the cage netns (e01s07)"
+  - "check_pkg on an offline fixture: known-vuln package flagged; clean -> []
+    (e01s08)"
+  - "test client T6: a stub consumer in another language replays the ndjson
+    contract and passes without curam's code (e01s09)"
+  - "wheel builds on CI; OSS files present; Nix dev build pinned (e01s10)"
+
+references:
+  - "docs/planning-context.yaml (decisions from elaborate-spec)"
+  - "harness docs/rust-security-core.md (the plan: S0-S7, sections 2-8)"
+  - "harness docs/architecture.md (contracts + T1-T7 test matrix)"
+  - "harness docs/rust-libraries.md (finalized crate set)"
+  - "harness docs/data-ipc-opensource.md (feed gaps + IPC + OSS-first)"

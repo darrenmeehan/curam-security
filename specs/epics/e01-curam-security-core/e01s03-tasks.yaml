@@ -1,0 +1,29 @@
+story_id: e01s03
+title: Injection defense in the core (rule + scanner)
+status: failing
+bcps: 4
+tasks:
+  - id: 1
+    description: "classify returns 'ask' when cmd executes repo-derived content (signature: exec of a repo-file path, e.g. 'bash setup.sh')"
+    verify: "python3 -c "from curamsec import classify; assert classify('bash setup.sh').action=='ask'""
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]
+  - id: 2
+    description: "scan_context(text) -> list[Finding] flags embedded injection phrases ('ignore previous instructions', 'MARKER: EXFIL')"
+    verify: "python3 -c "from curamsec import scan_context; assert scan_context('ignore previous instructions')""
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]
+  - id: 3
+    description: "Finding carries rule_id + evidence; threshold tunable"
+    verify: "cargo test -- scan_context"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]

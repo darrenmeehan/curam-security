@@ -1,0 +1,29 @@
+story_id: e01s05
+title: Lists pipeline (pin/hash/atomic/rev)
+status: failing
+bcps: 5
+tasks:
+  - id: 1
+    description: "List dir format: list.json {source_url, license, etag, sha256, refreshed_at, rev, entries}; updater fetches PINNED snapshot (rev, not HEAD) into staging"
+    verify: "cargo test -- lists_update"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]
+  - id: 2
+    description: "Atomic swap: staging verify sha256 vs manifest, then rename into place"
+    verify: "cargo test -- lists_atomic"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]
+  - id: 3
+    description: "Load-time verify: on-disk list hash+rev checked at EVERY load; stale rev rejected; tampered list rejected"
+    verify: "python3 -c "...tamper a list, reload must throw..." && cargo test -- lists_load_and_reject"
+    risk: P0
+    status: failing
+    allure:
+      severity: critical
+      categories: ["core"]

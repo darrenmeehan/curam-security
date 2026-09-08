@@ -1,0 +1,15 @@
+# release-plan.yaml — curam Security Core
+releases:
+  - version: 0.1.0
+    name: core-boundary
+    stories: [e01s01, e01s03, e01s02, e01s05, e01s04, e01s06, e01s07, e01s08, e01s09]
+  - version: 0.2.0
+    name: core-hardened
+    stories: [e01s10]
+ordering_notes: >-
+  WSJF-order by value-per-cost with dependency respect: s01 (tracer through
+  the whole stack first to catch integration issues), s03 (injection rule =
+  highest security value, cheap), s02+s05 (policy port + verified lists are
+  the substrate), s04 (match_host consumes s05 lists), s06+s07 (cage +
+  country), s08 (check_pkg), s09 (test client — the prove-it-all gate), s10
+  (OSS/CI last since it wraps a complete core).

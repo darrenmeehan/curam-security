@@ -1,0 +1,96 @@
+# planning-context.yaml — curam Security Core (elaborated via elaborate-spec)
+
+feature_name: curam-security-core
+problem_statement: >-
+  The Python harness POC is proven and frozen, but its security layers are
+  the proven-weak part (injection gap, no egress boundary, no feed
+  integrity). Instead of rewriting the harness in Rust, provide the
+  security boundary as a decoupled, standalone Rust core that the harness
+  will later call: independently testable, independently open-sourceable,
+  and it de-risks the SLO gate from the evals doc. This spec covers the CORE
+  ONLY, plus a basic test client — the harness rewiring that activates the
+  fixes (S2/S3/S5/S6 integration, T7 e2e) is a SEPARATE later epic.
+
+constraints:
+  - Linux >= 5.13 target (Landlock/namespaces available as needed)
+  - abi3 wheel via maturin + PyO3; one binary for all supported Python 3.x
+  - Standalone repo at ~/code/curam-security (sibling of curam-harness);
+    harness consumes it as wheel + binary dependency
+  - Artifacts: curamsec (PyO3 library), curam-run (bwrap cage binary),
+    lists pipeline, proto/ contracts, basic test client (Python)
+  - Every verdict is the provable chain {action, rule_id, source,
+    source_hash, evidence}; written to the journal
+  - Allow always wins over deny; unknown => ask (never hard-block dev infra)
+  - Feed integrity: pin snapshots (never HEAD), sha256 verify + atomic swap,
+    verify at load (not only fetch), monotonic rev anti-rollback (no TUF)
+  - allow/ highest trust (signed per-release, pinned, never auto-refreshed);
+    deny lists pinned + hashed (tamper can only add denials)
+  - bwrap for the cage in v1 (extrasafe only if we later embed the cage)
+  - NO async: no tokio/axum until a server-shaped artifact exists (then a
+    new crate); no DNS crate (no hickory); IP/country blocking enforced at
+    the network boundary (netns + nftables/ipset), not in the resolver
+  - IPC: curamsec in-process (PyO3); curam-run ndjson over stdio; future
+    daemon = AF_UNIX + JSON-RPC 2.0 in $XDG_RUNTIME_DIR/curam; HTTP only
+    for genuinely remote (phone bridge)
+  - Licensing: Apache-2.0/MIT for curamsec; lists only from permissive
+    sources (never vendor URLhaus or GeoLite)
+  - OSS-first: proto/ contracts versioned + reviewed like code; T6
+    contract test replayable in any language
+
+out_of_scope:
+  - Python harness rewiring / T7 end-to-end gates (the injection gap stays
+    open AT THE HARNESS until that later epic lands; the core exposes the
+    rule, integration closes the gap)
+  - Phone-bridge daemon (that's the tokio/axum moment; new crate "curamd")
+  - Mirror-signing infrastructure (out-of-band age key) — only when we
+    publish public feeds
+  - Skill/repo allowlist tooling ("bad skills" DB — ecosystem gap, fill later)
+  - Whole-harness rewrite, journal migration, telemetry
+
+key_decisions:
+  - decision: Core only; test client included; harness integration is a
+      separate later epic
+    rationale: Keeps this spec smaller and independently shippable; the
+      test client proves the core standalone; integration is untestable
+      without the core existing anyway
+  - decision: Standalone repo at ~/code/curam-security, not a rust/
+      workspace inside curam-harness
+    rationale: Open-source-first from day one — own issues, CI, releases;
+      harness consumes wheel + binary dependency
+  - decision: bwrap as the v1 cage (system tool, zero crates)
+    rationale: Most-proven unprivileged sandbox; extrasafe
+      (seccomp+Landlock+userns) only if we later embed the cage in-binary
+  - decision: No tokio/axum now
+    rationale: curamsec does zero I/O beyond matching; curam-run manages one
+      child (2 std::thread pipe readers); async N/A until a server-shaped
+      artifact, then it is a new crate (curamd) — proto/ contracts stay
+      transport-agnostic so nothing is precluded
+  - decision: Feed security without signing in the minimum
+    rationale: pin + sha256 + atomic swap + load-time verify + monotonic
+      rev already defeat MITM, feed-host compromise, cache tamper, rollback
+      with no keys; mirror signing (out-of-band age key) is the later add
+  - decision: IP/country blocking at the network boundary
+    rationale: country CIDR sets are kernel-enforced (nftables/ipset) at
+      the actual connection — no TOCTOU, O(1)-ish; harness keeps matching
+      hostnames only
+
+success_criteria:
+  - S0-S6 tests green, driven by the test client:
+  - classify("rm -rf /") == deny (from Python, in-process)
+  - policy.py port behavior-identical (scenario_deny + scenario_pii)
+  - match_host: PSL edge cases + allow-over-deny (evil.example => block,
+    files.pythonhosted.org => allow)
+  - check_pkg: offline fixture flags a known-vuln package, [] for clean
+  - curam-run cage: egress denied (wget example.com), localhost allowed,
+    rm /etc/passwd denied, timeout => timed_out
+  - lists: tampered list rejected at load; stale rev rejected; atomic swap
+    never leaves partial list visible
+  - ndjson contract replayable by the test client (T6) — a stub consumer
+    in another language passes without curam's code
+  - Provenance: every verdict includes rule_id + source + source_hash
+
+next_steps:
+  - Ready to plan: scope-work -> slice-tasks -> plan-work (bigpowers
+    planning spine), or plan-release for the epic index
+  - Repository bootstrap: init ~/code/curam-security; seed this spec as
+    specs/planning-context.yaml there

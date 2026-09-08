@@ -1,0 +1,16 @@
+epic_id: e01
+slug: curam-security-core
+title: curam Security Core (Rust) — standalone repo
+status: planning
+bcps: 31
+stories:
+  e01s01: {bcps: 2, title: "Tracer: maturin skeleton + classify()"}
+  e01s02: {bcps: 4, title: "Port policy.py rules to Rust"}
+  e01s03: {bcps: 4, title: "Injection defense in the core (rule + scanner)"}
+  e01s04: {bcps: 3, title: "match_host trie + allow-over-deny"}
+  e01s05: {bcps: 5, title: "Lists pipeline (pin/hash/atomic/rev)"}
+  e01s06: {bcps: 5, title: "curam-run bwrap cage + ndjson v1"}
+  e01s07: {bcps: 3, title: "Country/IP blocking in the cage netns"}
+  e01s08: {bcps: 2, title: "check_pkg OSV lookup (offline fixture)"}
+  e01s09: {bcps: 3, title: "Test client + ndjson contract replay (T6)"}
+  e01s10: {bcps: 2, title: "OSS hygiene + CI + Nix dev env"}

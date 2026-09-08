@@ -1,0 +1,29 @@
+story_id: e01s02
+title: Port policy.py rules to Rust
+status: failing
+bcps: 4
+tasks:
+  - id: 1
+    description: "Extract rules from curam-harness policy.py into a versioned rules module (Rust static or list file)"
+    verify: "grep -c deny src/rules.rs && grep -c allow src/rules.rs"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]
+  - id: 2
+    description: "aho-corasick multi-pattern engine over the ported rules; identical verdicts vs policy.py on a parity fixture"
+    verify: "cargo test -- politeness"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]
+  - id: 3
+    description: "Scenario parity tests: scenario_deny (denied) + scenario_pii_scrub (PII scrubbed) through classify()"
+    verify: "python3 -m pytest tests/scenarios -m 'deny or pii'"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]

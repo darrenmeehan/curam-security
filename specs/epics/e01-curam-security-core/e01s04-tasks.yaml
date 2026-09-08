@@ -1,0 +1,29 @@
+story_id: e01s04
+title: match_host trie + allow-over-deny
+status: failing
+bcps: 3
+tasks:
+  - id: 1
+    description: "Hostname suffix trie over deny hosts + allow hosts (PSL-suffix aware)"
+    verify: "cargo test -- trie"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]
+  - id: 2
+    description: "Allow always beats deny; unknown -> ask"
+    verify: "python3 -c "from curamsec import match_host; assert match_host('files.pythonhosted.org').action=='allow'; assert match_host('unknown-rand.example').action=='ask'""
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]
+  - id: 3
+    description: "Load host sets from lists-on-disk format (list.json rev + entries)"
+    verify: "cargo test -- load_lists"
+    risk: P1
+    status: failing
+    allure:
+      severity: high
+      categories: ["core"]
