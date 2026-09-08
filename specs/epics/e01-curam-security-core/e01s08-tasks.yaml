@@ -4,8 +4,12 @@ status: failing
 bcps: 2
 tasks:
   - id: 1
-    description: "check_pkg(name, version) -> list[Advisory] against a local OSV/RustSec fixture file"
-    verify: "python3 -c "from curamsec import check_pkg; assert check_pkg('vuln-pkg','1.0.0')""
+    description: >-
+      check_pkg(name, version) -> list[Advisory] against a local OSV/RustSec
+      fixture file
+    verify: >-
+      python3 -c "from curamsec import check_pkg;
+      assert check_pkg('vuln-pkg','1.0.0')"
     risk: P1
     status: failing
     allure:
@@ -13,7 +17,9 @@ tasks:
       categories: ["core"]
   - id: 2
     description: "Clean package -> []"
-    verify: "python3 -c "from curamsec import check_pkg; assert check_pkg('clean-pkg','1.0.0')==[]""
+    verify: >-
+      python3 -c "from curamsec import check_pkg;
+      assert check_pkg('clean-pkg','1.0.0')==[]"
     risk: P1
     status: failing
     allure:
