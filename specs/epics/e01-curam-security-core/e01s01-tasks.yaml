@@ -1,13 +1,13 @@
 story_id: e01s01
 title: Tracer: maturin skeleton + classify()
-status: failing
+status: done
 bcps: 2
 tasks:
   - id: 1
     description: "Init repo plumbing: pyproject.toml with [build-system]=maturin + abi3, src/lib.rs with #[pymodule] exporting classify()"
     verify: "python3 -c "import curamsec; print(curamsec.classify('ls').action)""
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
@@ -15,7 +15,7 @@ tasks:
     description: "classify returns Verdict allow/ask/deny; deny on dangerous exact commands like 'rm -rf /'"
     verify: "python3 -c "from curamsec import classify; assert classify('rm -rf /').action=='deny'""
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
@@ -23,7 +23,7 @@ tasks:
     description: "Verdict carries action/rule_id/source/source_hash/evidence (provable chain start)"
     verify: "python3 -c "from curamsec import classify; v=classify('rm -rf /'); assert all(hasattr(v,f) for f in ['action','rule_id','source','source_hash','evidence'])""
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]

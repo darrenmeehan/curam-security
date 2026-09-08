@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "curamsec"
+version = "0.1.0"
+description = "curam security core (Rust): classify / scan_context / match_host / check_pkg"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0 OR MIT" }
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "curamsec"
