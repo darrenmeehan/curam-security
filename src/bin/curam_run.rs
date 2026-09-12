@@ -157,6 +157,8 @@ fn bwrap_base() -> Vec<String> {
         "/tmp".into(),
         "--tmpfs".into(),
         "/run".into(),
+        "--tmpfs".into(),
+        "/var/tmp".into(),
         "--proc".into(),
         "/proc".into(),
         "--dev".into(),
