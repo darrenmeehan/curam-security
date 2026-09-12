@@ -1,7 +1,7 @@
 epic_id: e01
 slug: curam-security-core
 title: curam Security Core (Rust) — standalone repo
-status: planning
+status: done
 bcps: 31
 stories:
   e01s01: {bcps: 2, title: "Tracer: maturin skeleton + classify()"}
