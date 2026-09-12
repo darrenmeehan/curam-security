@@ -62,22 +62,43 @@ def main() -> None:
         # -- 2. workdir writable inside cage, persists host-side ------------
         print("-- workdir bind --")
         s = cage_shell(wd, "echo cage-wrote-this > from-cage.txt; cat from-cage.txt")
-        check(s["exit"] == 0 and (wd / "from-cage.txt").read_text().strip() == "cage-wrote-this", "workdir write persists")
+        check(
+            s["exit"] == 0
+            and (wd / "from-cage.txt").read_text().strip() == "cage-wrote-this",
+            "workdir write persists",
+        )
+
+        # -- 2b. verdict chain + cage layers flow through the tool ---------
+        print("-- verdict chain + cages (journal-ready) --")
+        check(isinstance(s.get("cages"), list) and s["cages"], "cages present")
+        check("bwrap:ro-system" in (s.get("cages") or []), "ro-system layer applied")
+        check(isinstance(s.get("verdicts"), list), "verdicts is a list")
+        for v in s.get("verdicts", []):
+            for key in ("action", "rule_id", "source", "source_hash", "evidence"):
+                check(key in v, f"verdict chain key: {key}")
 
         # -- 3. HOME writable (git/pip/cargo caches) ------------------------
         print("-- HOME bind --")
         home = Path.home()
         probe = home / ".curam-wiring-probe"
         s = cage_shell(wd, f"echo ok > {probe}")
-        check(s["exit"] == 0 and probe.read_text().strip() == "ok", "HOME write persists")
+        check(
+            s["exit"] == 0 and probe.read_text().strip() == "ok", "HOME write persists"
+        )
         probe.unlink(missing_ok=True)
 
         # -- 4. system read-only --------------------------------------------
         print("-- system dirs read-only --")
         s = cage_shell(wd, "rm /etc/passwd 2>&1; echo rc=$?")
-        check("rc=1" in s["stdout"] or "Read-only" in s["stdout"], f"rm /etc/passwd: {s['stdout'].strip()}")
+        check(
+            "rc=1" in s["stdout"] or "Read-only" in s["stdout"],
+            f"rm /etc/passwd: {s['stdout'].strip()}",
+        )
         s = cage_shell(wd, "touch /usr/local/lib/cage-test 2>&1; echo rc=$?")
-        check("rc=1" in s["stdout"] or "Read-only" in s["stdout"], f"touch /usr: {s['stdout'].strip()}")
+        check(
+            "rc=1" in s["stdout"] or "Read-only" in s["stdout"],
+            f"touch /usr: {s['stdout'].strip()}",
+        )
 
         # -- 5. egress (net on via harness default, so wget should work) ----
         print("-- egress --")
@@ -85,7 +106,9 @@ def main() -> None:
         # net is on; if there is no network on this box this check is skipped.
         if os.environ.get("CURAM_CAGE_CHECK_ONLINE", "1") == "1":
             try:
-                s = cage_shell(wd, "wget -T 5 -q -O /dev/null https://example.com; echo rc=$?")
+                s = cage_shell(
+                    wd, "wget -T 5 -q -O /dev/null https://example.com; echo rc=$?"
+                )
                 online = "rc=0" in s["stdout"]
             except Exception:
                 online = False
@@ -99,7 +122,10 @@ def main() -> None:
         t0 = time.monotonic()
         s = cage_shell(wd, "sleep 30", timeout=2)
         elapsed = time.monotonic() - t0
-        check(not s["ok"] and "timed out" in s.get("error", ""), f"timeout after 2s (took {elapsed:.1f}s)")
+        check(
+            not s["ok"] and "timed out" in s.get("error", ""),
+            f"timeout after 2s (took {elapsed:.1f}s)",
+        )
         check(elapsed < 10, "killed promptly")
 
         # -- 7. fail-closed: no cage binary => shell refuses ----------------

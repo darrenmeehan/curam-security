@@ -1,56 +1,81 @@
-# Harness wiring for the curam-run cage (T7)
+# Harness wiring for the curam-run cage (T7) + verdict journal
 
-Drop the curam-run sandbox into `curam-harness`: **the `shell` tool becomes
-the cage**. Fail-closed — no cage, no shell.
+Drops the curam-run sandbox into `curam-harness` and makes the shell tool's
+**provable verdict chain** land in the session journal.
 
-## What changes in the harness
+## Files in this directory
 
-- **`cage.py`** (new) — a minimal ndjson client. It speaks the documented
-  `cage/1` contract over stdio; it does NOT import any curam code (T6).
-- **`tools.py`** — `tool_shell` now runs the command inside curam-run with:
-  - `net: true` by default (daily pip/git/cargo/npm still works)
-  - writable **bind** of the workdir + home (where git/ssh/pip/cargo keep
-    config and caches); everything else is read-only in the cage
-  - the same return shape `{ok, exit, stdout, stderr}` — `agent.py` is
-    untouched
-  - **fail-closed**: if the cage binary is unavailable, shell returns an
-    error telling you to build it — it will NOT silently run unsandboxed
+| File | Role | Installed to |
+| --- | --- | --- |
+| `cage.py` | minimal ndjson client for the `cage/1` contract (no curam imports — T6) | `curam-harness/cage.py` |
+| `tools.py` | tilts the harness `shell` tool to run inside the cage (fail-closed); returns `{ok, exit, stdout, stderr, cages, verdicts, timed_out}` | `curam-harness/tools.py` |
+| `apply.sh` | one-command installer: backs up tools.py + agent.py, copies cage.py + tools.py, patches agent.py to journal verdicts (idempotent) | run from this dir |
+| `check_wiring.py` | thorough post-wiring test (runs the exact `tools.run` path the agent uses) | standalone, run from `curam-harness` |
+| `README.md` | this file |
+
+## What the wiring does
+
+- **`tool_shell` = the cage.** Every shell command the agent runs spawns a
+  fresh bwrap cage: net on by default (daily pip/git/cargo still work),
+  workdir + home writable binds, system dirs read-only, `/tmp`/`/run` tmpfs,
+  timeout enforced. **Fail-closed:** if curam-run is missing, shell refuses
+  rather than silently running unsandboxed.
+- **Verdict chain journaled.** The cage already produced the provable chain
+  `{action, rule_id, source, source_hash, evidence}` per command. `tools.py`
+  now passes `verdicts` + `cages` + `timed_out` through, and `agent.py` logs
+  them as a `tool_verdicts` event.
+- **read/write/edit untouched** — host-side, as before.
+
+## Intent (why the verdict journal)
+
+The harness journal is *the* audit record ("the event stream IS the
+product"). Before this change a shell run was journaled as command +
+stdout/stderr; the cage's *decision* (which rule fired, which layers applied)
+was computed and then thrown away. Now every shell command also records:
+
+```json
+{"command": "git push origin main",
+ "verdicts": [{"action": "ask", "rule_id": "ask_flag", "source": "rules", ...}],
+ "cages": ["bwrap:unshare-net", "bwrap:ro-system", "bwrap:net-on"]}
+```
+
+So after any session you can answer *"what did the agent try and what said
+no — and under which cage layers?"* forensically, per command. This is the
+auditability layer on top of the already-active gating + sandbox.
 
 ## Apply
 
 ```bash
-bash harness-wiring/apply.sh
+bash ~/code/curam-security/harness-wiring/apply.sh
 ```
 
-(It builds curam-run if missing, backs up tools.py, and copies the two
-files in. Set `CURAM_HARNESS_DIR` if your harness lives elsewhere.)
+Reversible: `tools.py.bak-*` and `agent.py.bak-*` are left beside the
+originals. Re-running is safe (idempotent — skips already-patched agent.py).
 
 ## Verify
 
 ```bash
 cd ~/code/curam/curam-harness
-python3 -m py_compile tools.py cage.py
-python3 - <<'PYEOF'
-import tempfile, pathlib, tools
-r = tools.tool_shell(pathlib.Path(tempfile.mkdtemp()), {"command": "echo hi"})
-assert r["exit"] == 0 and r["stdout"].strip() == "hi", r
-print("shell tool is wired: command ran inside the cage")
-PYEOF
+python3 -m py_compile agent.py tools.py cage.py
+python3 ~/code/curam-security/harness-wiring/check_wiring.py
 ```
+
+`check_wiring.py` covers: read/write/edit intact, shell basics + exit/stderr
+passthrough, workdir + HOME writable & persistent, system dirs read-only,
+timeout kills promptly, fail-closed (no cage => provably no unsandboxed
+run), and that `cages`/`verdicts` flow through in journal-ready shape.
 
 ## Tuning
 
-- **Point at a different binary**: `export CURAM_RUN_BIN=/path/to/curam-run`
-- **Disabled by default?** Not yet — toggling it is a 1-line env read in
-  `tool_shell` if you want a kill switch later.
-- **Harder cage**: run with `net: false` / `geo: "COUNTRY"` for egress
-  control (see `proto/ndjson-spec.md`).
+- **Point at a different curam-run build**: `export CURAM_RUN_BIN=/path/to/curam-run`.
+- **Harder cage**: `net: false` / `geo: "COUNTRY"` per request (see `proto/ndjson-spec.md`).
+- **See the journal rows**: `sqlite3 ~/.local/share/curam/curam.db "select etype,payload from events where etype='tool_verdicts' limit 10"`.
 
-## Behavior notes (daily-use differences)
+## Notes
 
-- Every `shell` command now starts a bwrap cage: workdir + home writable,
-  system dirs read-only, `/tmp` and `/run` are tmpfs (fresh per command).
-- Commands that absolutely need to write outside workdir/home (e.g.
-  `sudo`, installs to `/usr`) will fail inside the cage — that is the
-  point. `read` / `write` / `edit` tools are unchanged and stay host-side.
-- Timeouts still kill the command (`timed_out: true`).
+- `cage.py` knows only the documented ndjson contract — no curam imports
+  (the T6 contract-replay property, also covered by `tests/contract_stub.js`).
+- The classifier (per-command LLM judge) is a separate layer, still off in
+  `curam.toml` (`[classifier] enabled = false`). The cage = the boundary;
+  the classifier = the pre-flight judge; the journal = the record. All three
+  are independent.

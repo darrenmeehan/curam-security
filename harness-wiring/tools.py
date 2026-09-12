@@ -226,12 +226,18 @@ def tool_shell(workdir: Path, args: dict, timeout_default: int = 60) -> dict:
             "error": f"timed out after {timeout}s",
             "stdout": _trim(r.get("stdout")),
             "stderr": _trim(r.get("stderr")),
+            "timed_out": True,
+            "cages": r.get("cages", []),
+            "verdicts": r.get("verdicts", []),
         }
     return {
         "ok": True,
         "exit": r.get("exit", 1),
         "stdout": _trim(r.get("stdout")),
         "stderr": _trim(r.get("stderr")),
+        "timed_out": False,
+        "cages": r.get("cages", []),
+        "verdicts": r.get("verdicts", []),
     }
 
 
