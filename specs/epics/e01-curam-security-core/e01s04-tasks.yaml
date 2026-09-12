@@ -1,6 +1,6 @@
 story_id: e01s04
 title: match_host trie + allow-over-deny
-status: failing
+status: done
 bcps: 3
 tasks:
   - id: 1
@@ -8,7 +8,7 @@ tasks:
       Hostname suffix trie over deny hosts + allow hosts (PSL-suffix aware)
     verify: "cargo test -- trie"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
@@ -19,7 +19,7 @@ tasks:
       assert match_host('files.pythonhosted.org').action=='allow';
       assert match_host('unknown-rand.example').action=='ask'"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
@@ -28,7 +28,7 @@ tasks:
       Load host sets from lists-on-disk format (list.json rev + entries)
     verify: "cargo test -- load_lists"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]

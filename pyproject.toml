@@ -12,3 +12,11 @@ license = { text = "Apache-2.0 OR MIT" }
 [tool.maturin]
 features = ["pyo3/extension-module"]
 module-name = "curamsec"
+
+[tool.pytest.ini_options]
+markers = [
+    "deny: destructive commands that must be denied",
+    "pii: commands that carry PII/secret material",
+    "parity: cross-implementation Rust-vs-Python parity",
+]
+addopts = "-q"
