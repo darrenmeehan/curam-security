@@ -1,0 +1,21 @@
+[
+  {
+    "id": "RUSTSEC-VULN-1",
+    "summary": "format string control in vuln-pkg",
+    "severity": "high",
+    "affected": [
+      {
+        "package": {"name": "vuln-pkg", "ecosystem": "crates.io"},
+        "ranges": [
+          {
+            "type": "SEMVER",
+            "events": [
+              {"introduced": "0.9.0"},
+              {"fixed": "1.0.1"}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

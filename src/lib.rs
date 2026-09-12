@@ -18,6 +18,7 @@ use regex::Regex;
 
 mod host;
 mod lists;
+mod osv;
 mod rules;
 mod shlex;
 
@@ -352,11 +353,21 @@ fn lists_update(lists_dir: &str, name: &str, fetched: &str) -> PyResult<String> 
     Ok(format!("updated {name} @ rev {rev}"))
 }
 
-/// check_pkg stub — advisory lookup is a separate story (e01s08). Returns an
-/// empty list for now; kept here so the Python surface matches the contract.
+/// check_pkg — OSV advisory lookup against the offline fixture (e01s08).
+/// Affected version in a known range -> list of Advisory; clean -> [].
 #[pyfunction]
-fn check_pkg(_name: &str, _version: Option<&str>) -> Vec<Advisory> {
-    Vec::new()
+#[pyo3(signature = (name, version = None))]
+fn check_pkg(name: &str, version: Option<&str>) -> Vec<Advisory> {
+    osv::check_pkg(name, version)
+        .iter()
+        .map(|a| {
+            Advisory::new(
+                a.id.clone(),
+                a.summary.clone(),
+                a.severity.clone(),
+            )
+        })
+        .collect()
 }
 
 /// A package advisory (e01s08 will populate).

@@ -142,10 +142,14 @@ def test_scan_context_flags_injection():
     assert hits[0].rule_id
 
 
-def test_check_pkg_contract_shape():
-    # e01s08 fills the advisory engine; the client pins the call surface.
-    result = Cage.check_pkg("requests", "2.31.0")
-    assert isinstance(result, list)
+def test_check_pkg_flags_vuln_and_clean():
+    # Offline OSV fixture (e01s08): vuln-pkg 1.0.0 affected, fixed+clean clear.
+    hits = Cage.check_pkg("vuln-pkg", "1.0.0")
+    assert len(hits) == 1
+    assert hits[0].id == "RUSTSEC-VULN-1"
+    assert hits[0].severity
+    assert Cage.check_pkg("vuln-pkg", "1.0.1") == []
+    assert Cage.check_pkg("clean-pkg", "1.0.0") == []
 
 
 def test_cage_echo():
