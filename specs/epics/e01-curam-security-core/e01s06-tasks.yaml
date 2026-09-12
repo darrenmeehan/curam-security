@@ -1,29 +1,36 @@
 story_id: e01s06
 title: curam-run bwrap cage + ndjson v1
-status: failing
+status: done
 bcps: 5
 tasks:
   - id: 1
-    description: "curam-run binary: parse args, exec 'bash -c cmd' inside bwrap (net off) + protect-system"
+    description: >-
+      curam-run binary: parse args, exec 'bash -c cmd' inside bwrap
+      (net off) + protect-system
     verify: "printf 'echo ok' | curam-run -- bash -c 'echo ok'"
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]
   - id: 2
-    description: "Ndjson protocol v1 over stdio: request {id, cmd, cwd, timeout_s, net, allow_hosts, deny_hosts}; result {id, exit, stdout, stderr, cages, verdicts}"
+    description: >-
+      Ndjson protocol v1 over stdio: request {id, cmd, cwd, timeout_s,
+      net, allow_hosts, deny_hosts}; result {id, exit, stdout, stderr,
+      cages, verdicts}
     verify: "python3 tests/contract_replay.py --stub node"
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]
   - id: 3
-    description: "Timeout -> timed_out; egress denied (wget example.com), rm /etc/passwd denied, localhost allowed"
+    description: >-
+      Timeout -> timed_out; egress denied (wget example.com),
+      rm /etc/passwd denied, localhost allowed
     verify: "python3 tests/cage_integration.py"
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]

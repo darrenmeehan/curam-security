@@ -1,21 +1,24 @@
 story_id: e01s07
 title: Country/IP blocking in the cage netns
-status: failing
+status: done
 bcps: 3
 tasks:
   - id: 1
-    description: "curam-run gains --geo COUNTRY: load country CIDR set into the cage's network namespace via nftables/ipset tooling (geo-nft / ipset-country)"
+    description: >-
+      curam-run gains --geo COUNTRY: load country CIDR set into the cage's
+      network namespace via nftables/ipset tooling (geo-nft / ipset-country)
     verify: "sudo ipset list | grep -qi '<COUNTRY>'"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
   - id: 2
-    description: "Proto doc: --geo in ndjson envelope; documented in proto/ndjson-spec"
+    description: >-
+      Proto doc: --geo in ndjson envelope; documented in proto/ndjson-spec
     verify: "cargo test -- geo_parse"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
