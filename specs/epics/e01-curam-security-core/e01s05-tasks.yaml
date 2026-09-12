@@ -1,6 +1,6 @@
 story_id: e01s05
 title: Lists pipeline (pin/hash/atomic/rev)
-status: failing
+status: done
 bcps: 5
 tasks:
   - id: 1
@@ -10,7 +10,7 @@ tasks:
       not HEAD) into staging
     verify: "cargo test -- lists_update"
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]
@@ -19,7 +19,7 @@ tasks:
       Atomic swap: staging verify sha256 vs manifest, then rename into place
     verify: "cargo test -- lists_atomic"
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]
@@ -31,7 +31,7 @@ tasks:
       python3 -c "...tamper a list, reload must throw..." &&
       cargo test -- lists_load_and_reject
     risk: P0
-    status: failing
+    status: done
     allure:
       severity: critical
       categories: ["core"]

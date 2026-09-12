@@ -8,6 +8,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use super::lists;
+
 /// Verdict for a single hostname lookup, mirroring the core's action tri-state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Match {
@@ -110,31 +112,24 @@ impl HostMatcher {
 /// Layout (per the plan):
 ///   <dir>/allow/list.json   {"rev": ..., "entries": ["files.pythonhosted.org", ...]}
 ///   <dir>/deny/list.json    {"rev": ..., "entries": ["evil.example", ...]}
-/// Missing files yield empty sets; a present-but-malformed file is an error so
-/// a corrupted list never silently becomes "allow everything".
+/// Missing lists yield empty sets; a present-but-tampered/stale/malformed list
+/// is an error (verified at every load, e01s05) so a corrupted list never
+/// silently becomes "allow everything".
 pub fn matcher_from_lists_dir(dir: &Path) -> Result<HostMatcher, String> {
-    let allow = read_entries(&dir.join("allow").join("list.json"))?;
-    let deny = read_entries(&dir.join("deny").join("list.json"))?;
+    let allow = entries_of(dir, "allow")?;
+    let deny = entries_of(dir, "deny")?;
     let allow: Vec<&str> = allow.iter().map(String::as_str).collect();
     let deny: Vec<&str> = deny.iter().map(String::as_str).collect();
     Ok(HostMatcher::new(&allow, &deny))
 }
 
-fn read_entries(path: &Path) -> Result<Vec<String>, String> {
-    if !path.exists() {
-        return Ok(Vec::new());
+/// Entries of one verified list; empty when the list is not installed yet.
+fn entries_of(lists_dir: &Path, name: &str) -> Result<Vec<String>, String> {
+    match lists::load_list(lists_dir, name) {
+        Ok(Some(doc)) => Ok(doc.entries),
+        Ok(None) => Ok(Vec::new()),
+        Err(e) => Err(e),
     }
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{path:?}: {e}"))?;
-    let v: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| format!("{path:?}: bad json: {e}"))?;
-    let entries = v
-        .get("entries")
-        .and_then(|e| e.as_array())
-        .ok_or_else(|| format!("{path:?}: missing entries array"))?;
-    Ok(entries
-        .iter()
-        .filter_map(|e| e.as_str().map(str::to_string))
-        .collect())
 }
 
 #[cfg(test)]
@@ -196,11 +191,17 @@ mod tests {
         std::fs::create_dir_all(dir.join("allow")).unwrap();
         std::fs::create_dir_all(dir.join("deny")).unwrap();
 
-        let mut a = std::fs::File::create(dir.join("allow").join("list.json")).unwrap();
-        a.write_all(br#"{"rev": 7, "entries": ["files.pythonhosted.org", "pypi.org"]}"#)
-            .unwrap();
-        let mut d = std::fs::File::create(dir.join("deny").join("list.json")).unwrap();
-        d.write_all(br#"{"rev": 2, "entries": ["evil.example"]}"#).unwrap();
+        let allow = lists::render_list(
+            "https://example.test/hosts",
+            "CC0",
+            "",
+            "",
+            7,
+            &vec!["files.pythonhosted.org".to_owned(), "pypi.org".to_owned()]
+        );
+        let deny = lists::render_list("https://example.test/deny", "CC0", "", "", 2, &["evil.example".to_owned()]);
+        std::fs::write(&dir.join("allow").join("list.json"), allow.as_bytes()).unwrap();
+        std::fs::write(&dir.join("deny").join("list.json"), deny.as_bytes()).unwrap();
 
         let m = matcher_from_lists_dir(&dir).unwrap();
         assert_eq!(m.lookup("files.pythonhosted.org", false), Match::Allow);

@@ -17,6 +17,7 @@ use pyo3::prelude::*;
 use regex::Regex;
 
 mod host;
+mod lists;
 mod rules;
 mod shlex;
 
@@ -280,16 +281,20 @@ fn host_verdict(m: Match) -> Verdict {
 const DEFAULT_ALLOW: &[&str] = &["files.pythonhosted.org", "pypi.org", "python.org"];
 const DEFAULT_DENY: &[&str] = &["evil.example"];
 
-/// Module-level matcher seeded from lists-on-disk (env `CUSEC_LISTS_DIR` or
-/// `~/.local/share/curam/lists`), else built-in defaults.
-fn default_matcher() -> HostMatcher {
-    let dir: Option<std::path::PathBuf> = std::env::var_os("CUSEC_LISTS_DIR")
+/// Lists dir (env `CUSEC_LISTS_DIR` or `~/.local/share/curam/lists`).
+fn lists_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("CUSEC_LISTS_DIR")
         .map(std::path::PathBuf::from)
         .or_else(|| {
             std::env::var_os("HOME")
                 .map(|h| std::path::PathBuf::from(h).join(".local/share/curam/lists"))
-        });
-    if let Some(d) = dir {
+        })
+}
+
+/// Module-level matcher seeded from lists-on-disk (env `CUSEC_LISTS_DIR` or
+/// `~/.local/share/curam/lists`), else built-in defaults.
+fn default_matcher() -> HostMatcher {
+    if let Some(d) = lists_dir() {
         if let Ok(m) = host::matcher_from_lists_dir(&d) {
             // Only a *non-empty* loaded matcher overrides the built-in seed;
             // an empty lists dir (no files yet) falls through to defaults so
@@ -320,11 +325,29 @@ fn match_host(host: &str, allow: bool) -> Verdict {
 }
 
 /// Reload host lists from disk (useful after a lists update).
+///
+/// Unlike the importer's lenient seed (falls back to built-in defaults on
+/// empty/missing lists), reload is *strict*: a tampered, stale or malformed
+/// list raises instead of silently weakening policy.
 #[pyfunction]
 fn reload_host_lists() -> PyResult<()> {
-    let m = default_matcher();
+    let d = lists_dir().unwrap_or_else(|| std::path::PathBuf::from("/nonexistent/curam/lists"));
+    let m = host::matcher_from_lists_dir(&d)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("list load failed: {e}")))?;
     *matcher() = m;
     Ok(())
+}
+
+/// Update (pin + verify + atomically swap) a list from a fetched snapshot.
+/// `fetched` is the raw text of a `list.json`; `rev` on it must be strictly
+/// greater than the last-installed rev or the pin is rejected.
+#[pyfunction]
+#[pyo3(signature = (lists_dir, name, fetched))]
+fn lists_update(lists_dir: &str, name: &str, fetched: &str) -> PyResult<String> {
+    let dir = std::path::PathBuf::from(lists_dir);
+    let rev = lists::update_list(&dir, name, fetched)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+    Ok(format!("updated {name} @ rev {rev}"))
 }
 
 /// check_pkg stub — advisory lookup is a separate story (e01s08). Returns an
@@ -365,6 +388,7 @@ fn curamsec(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(scan_context, m)?)?;
     m.add_function(wrap_pyfunction!(match_host, m)?)?;
     m.add_function(wrap_pyfunction!(reload_host_lists, m)?)?;
+    m.add_function(wrap_pyfunction!(lists_update, m)?)?;
     m.add_function(wrap_pyfunction!(check_pkg, m)?)?;
     m.add("__version__", "0.1.0")?;
     Ok(())
