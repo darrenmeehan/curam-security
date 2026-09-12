@@ -276,6 +276,8 @@ if __name__ == "__main__":
         cage_write = tool_shell(wd, {"command": "echo ok > caged.txt; cat caged.txt"})
         assert cage_write["exit"] == 0 and cage_write["stdout"].strip() == "ok"
         ro = tool_shell(wd, {"command": "touch /etc/passwd 2>&1; echo rc=$?"})
-        assert "rc=1" in (ro.get("stdout") or "") or "Read-only" in (ro.get("stdout") or ""), ro
+        assert "rc=1" in (ro.get("stdout") or "") or "Read-only" in (
+            ro.get("stdout") or ""
+        ), ro
         assert not run(wd, "nope", {})["ok"]
         print("tools self-check OK (shell runs in the cage)")

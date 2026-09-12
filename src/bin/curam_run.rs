@@ -535,9 +535,16 @@ mod tests {
             verdicts: Vec::new(),
         };
         let text = render_result(&r);
-        let v: serde_json::Value =
-            serde_json::from_str(&text).expect("result is json");
-        for key in ["id", "exit", "stdout", "stderr", "timed_out", "cages", "verdicts"] {
+        let v: serde_json::Value = serde_json::from_str(&text).expect("result is json");
+        for key in [
+            "id",
+            "exit",
+            "stdout",
+            "stderr",
+            "timed_out",
+            "cages",
+            "verdicts",
+        ] {
             assert!(v.get(key).is_some(), "missing envelope key {key}");
         }
         assert_eq!(v["id"], 7);
