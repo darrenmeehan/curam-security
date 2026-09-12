@@ -9,6 +9,10 @@ description = "curam security core — classify / scan_context / match_host / ch
 name = "curamsec"
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "curam-run"
+path = "src/bin/curam_run.rs"
+
 [dependencies]
 pyo3 = { version = "0.27", features = ["abi3-py38", "extension-module"] }
 sha2 = "0.10"
