@@ -90,11 +90,9 @@ fn lists_dir() -> Option<std::path::PathBuf> {
 /// Read the CIDR entries of a geo list: `<lists>/geo/<COUNTRY>/list.json`
 /// (the verified lists pipeline schema; entries are CIDR strings).
 fn geo_cidrs(country: &str) -> Result<Vec<String>, String> {
-    let dir =
-        lists_dir().ok_or_else(|| "CUSEC_LISTS_DIR unset and no HOME".to_string())?;
+    let dir = lists_dir().ok_or_else(|| "CUSEC_LISTS_DIR unset and no HOME".to_string())?;
     let path = dir.join("geo").join(country).join("list.json");
-    let text =
-        std::fs::read_to_string(&path).map_err(|e| format!("{path:?}: {e}"))?;
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{path:?}: {e}"))?;
     let v: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| format!("{path:?}: bad json: {e}"))?;
     let entries = match v.get("entries").and_then(|e| e.as_array()) {
@@ -301,10 +299,7 @@ fn run_caged(req: &Request) -> Result_ {
         None => None,
     };
 
-    let argv = bwrap_argv(
-        req,
-        ruleset_path.as_ref().and_then(|p| p.to_str()),
-    );
+    let argv = bwrap_argv(req, ruleset_path.as_ref().and_then(|p| p.to_str()));
     let mut cmd = Command::new(&argv[0]);
     cmd.args(argv.iter().skip(1));
     cmd.stdin(Stdio::null());
@@ -494,6 +489,43 @@ mod tests {
     fn parse_request_rejects_wrong_envelope_version() {
         let bad = parse_request("{\"id\":1,\"v\":\"cage/9\",\"cmd\":[\"echo\"],\"timeout_s\":1}");
         assert!(bad.is_err());
+    }
+
+    // T6: the ndjson contract survives a full request->result round trip
+    // with the documented envelope keys (proto/ndjson-spec.md).
+    #[test]
+    fn contract_replay_envelope_round_trip() {
+        let req = parse_request(
+            "{\"id\":7,\"v\":\"cage/1\",\"cmd\":[\"bash\",\"-c\",\"echo ok\"],\"cwd\":\"/tmp\",\"timeout_s\":5,\"net\":false,\"geo\":\"RU\",\"allow_hosts\":[\"github.com\"],\"deny_hosts\":[\"evil.example\"]}",
+        )
+        .unwrap();
+        assert_eq!(req.cmd, vec!["bash", "-c", "echo ok"]);
+
+        // A result rendered for that request carries every envelope key.
+        let mut verdicts = host_verdicts(&req);
+        assert_eq!(verdicts.len(), 2, "deny + allow verdicts");
+        let out = verdicts.iter().map(|v| v["action"].as_str().unwrap());
+        assert!(out.clone().any(|a| a == "deny"));
+        assert!(out.clone().any(|a| a == "allow"));
+        verdicts.clear(); // don't need them for the envelope check below
+
+        let r = Result_ {
+            id: req.id,
+            exit: 0,
+            stdout: "ok\n".into(),
+            stderr: String::new(),
+            timed_out: false,
+            cages: vec!["bwrap:unshare-net".into()],
+            verdicts: Vec::new(),
+        };
+        let text = render_result(&r);
+        let v: serde_json::Value =
+            serde_json::from_str(&text).expect("result is json");
+        for key in ["id", "exit", "stdout", "stderr", "timed_out", "cages", "verdicts"] {
+            assert!(v.get(key).is_some(), "missing envelope key {key}");
+        }
+        assert_eq!(v["id"], 7);
+        assert_eq!(v["stdout"], "ok\n");
     }
 
     #[test]

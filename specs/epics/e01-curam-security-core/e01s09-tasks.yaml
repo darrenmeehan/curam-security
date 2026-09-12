@@ -1,21 +1,25 @@
 story_id: e01s09
 title: Test client + ndjson contract replay (T6)
-status: failing
+status: done
 bcps: 3
 tasks:
   - id: 1
-    description: "python3 tests/test_client.py drives curamsec (classify/match_host/check_pkg) + curam-run (ndjson) and asserts verdicts"
+    description: >-
+      python3 tests/test_client.py drives curamsec (classify/match_host/
+      check_pkg) + curam-run (ndjson) and asserts verdicts
     verify: "python3 -m pytest tests/test_client.py"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
   - id: 2
-    description: "Node stub re-plays the SAME ndjson contract without importing curam — proves the contract is language-agnostic (T6)"
+    description: >-
+      Node stub re-plays the SAME ndjson contract without importing curam
+      — proves the contract is language-agnostic (T6)
     verify: "node tests/contract_stub.js && cargo test -- contract_replay"
     risk: P1
-    status: failing
+    status: done
     allure:
       severity: high
       categories: ["core"]
