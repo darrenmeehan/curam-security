@@ -23,37 +23,39 @@ REPO = Path(__file__).resolve().parent.parent
 DEFAULT_BIN = REPO / "target" / "debug" / "curam-run"
 
 REQUEST = {
-    "id": 1,
-    "v": "cage/1",
-    "cmd": ["bash", "-c", "echo contract-ok"],
-    "cwd": str(REPO),
-    "timeout_s": 5,
-    "net": False,
-    "allow_hosts": ["github.com"],
-    "deny_hosts": ["evil.example"],
+  "id": 1,
+  "v": "cage/1",
+  "cmd": ["bash", "-c", "echo contract-ok"],
+  "cwd": str(REPO),
+  "timeout_s": 5,
+  "net": False,
+  "allow_hosts": ["github.com"],
+  "deny_hosts": ["evil.example"],
 }
 
 
 def assert_envelope(result, expect_stdout):
-    """The v1 result envelope: {id, exit, stdout, stderr, timed_out, cages, verdicts}."""
-    for key in ("id", "exit", "stdout", "stderr", "timed_out", "cages", "verdicts"):
-        assert key in result, f"missing envelope key {key}: {result}"
-    assert result["id"] == REQUEST["id"], "id must echo"
-    assert result["stdout"].strip() == expect_stdout, result
-    assert isinstance(result["cages"], list) and result["cages"], "cages must be non-empty"
-    assert isinstance(result["verdicts"], list), "verdicts must be a list"
-    assert result["exit"] == 0
+  """The v1 result envelope: {id, exit, stdout, stderr, timed_out, cages, verdicts}."""
+  for key in ("id", "exit", "stdout", "stderr", "timed_out", "cages", "verdicts"):
+    assert key in result, f"missing envelope key {key}: {result}"
+  assert result["id"] == REQUEST["id"], "id must echo"
+  assert result["stdout"].strip() == expect_stdout, result
+  assert isinstance(result["cages"], list) and result["cages"], (
+    "cages must be non-empty"
+  )
+  assert isinstance(result["verdicts"], list), "verdicts must be a list"
+  assert result["exit"] == 0
 
 
 def replay_python(bin_path):
-    line = json.dumps(REQUEST, separators=(",", ":"))
-    p = subprocess.run(
-        [str(bin_path)], input=line + "\n", capture_output=True, text=True, timeout=30
-    )
-    assert p.returncode == 0, p.stderr
-    result = json.loads(p.stdout.strip().splitlines()[-1])
-    assert_envelope(result, "contract-ok")
-    return result
+  line = json.dumps(REQUEST, separators=(",", ":"))
+  p = subprocess.run(
+    [str(bin_path)], input=line + "\n", capture_output=True, text=True, timeout=30
+  )
+  assert p.returncode == 0, p.stderr
+  result = json.loads(p.stdout.strip().splitlines()[-1])
+  assert_envelope(result, "contract-ok")
+  return result
 
 
 NODE_STUB = r"""
@@ -78,32 +80,40 @@ run.on('close', () => {
 
 
 def replay_node(bin_path):
-    """A node consumer that knows ONLY the documented contract schema."""
-    p = subprocess.run(
-        ["node", "-e", NODE_STUB, json.dumps(REQUEST, separators=(",", ":")), str(bin_path)],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    assert p.returncode == 0, p.stderr
-    assert "node-stub-ok" in p.stdout, p.stdout
+  """A node consumer that knows ONLY the documented contract schema."""
+  p = subprocess.run(
+    [
+      "node",
+      "-e",
+      NODE_STUB,
+      json.dumps(REQUEST, separators=(",", ":")),
+      str(bin_path),
+    ],
+    capture_output=True,
+    text=True,
+    timeout=30,
+  )
+  assert p.returncode == 0, p.stderr
+  assert "node-stub-ok" in p.stdout, p.stdout
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--stub", choices=["node"], default=None)
-    ap.add_argument("--curam-run", default=str(DEFAULT_BIN))
-    args = ap.parse_args()
+  ap = argparse.ArgumentParser()
+  ap.add_argument("--stub", choices=["node"], default=None)
+  ap.add_argument("--curam-run", default=str(DEFAULT_BIN))
+  args = ap.parse_args()
 
-    bin_path = Path(args.curam_run)
-    assert bin_path.exists(), f"curam-run not built: {bin_path} (cargo build --bin curam-run)"
+  bin_path = Path(args.curam_run)
+  assert bin_path.exists(), (
+    f"curam-run not built: {bin_path} (cargo build --bin curam-run)"
+  )
 
-    replay_python(bin_path)
-    if args.stub == "node":
-        replay_node(bin_path)
-    print("contract replay OK")
-    return 0
+  replay_python(bin_path)
+  if args.stub == "node":
+    replay_node(bin_path)
+  print("contract replay OK")
+  return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+  sys.exit(main())
