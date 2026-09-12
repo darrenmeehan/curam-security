@@ -360,13 +360,7 @@ fn lists_update(lists_dir: &str, name: &str, fetched: &str) -> PyResult<String> 
 fn check_pkg(name: &str, version: Option<&str>) -> Vec<Advisory> {
     osv::check_pkg(name, version)
         .iter()
-        .map(|a| {
-            Advisory::new(
-                a.id.clone(),
-                a.summary.clone(),
-                a.severity.clone(),
-            )
-        })
+        .map(|a| Advisory::new(a.id.clone(), a.summary.clone(), a.severity.clone()))
         .collect()
 }
 

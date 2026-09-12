@@ -24,7 +24,9 @@ const FIXTURE_JSON: &str = include_str!("osv_fixture.json");
 #[cfg(test)]
 fn fixture() -> Result<Vec<Value>, String> {
     let doc: serde_json::Value = serde_json::from_str(FIXTURE_JSON).map_err(|e| format!("{e}"))?;
-    doc.as_array().cloned().ok_or_else(|| "fixture must be a list".into())
+    doc.as_array()
+        .cloned()
+        .ok_or_else(|| "fixture must be a list".into())
 }
 
 /// Look up advisories for `name` at `version`. `version: None` matches any
