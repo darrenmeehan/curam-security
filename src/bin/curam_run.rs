@@ -23,6 +23,7 @@ struct Request {
     timeout_s: Option<u64>,
     net: bool,
     geo: Option<String>,
+    bind: Vec<String>, // "host:guest" writable binds (e.g. the workdir)
     allow_hosts: Vec<String>,
     deny_hosts: Vec<String>,
 }
@@ -51,6 +52,7 @@ fn parse_request(line: &str) -> Result<Request, String> {
     let timeout_s = v.get("timeout_s").and_then(|x| x.as_u64());
     let net = v.get("net").and_then(|x| x.as_bool()).unwrap_or(false);
     let geo = v.get("geo").and_then(|x| x.as_str()).map(str::to_string);
+    let bind = strings_of(&v, "bind");
     let allow_hosts = strings_of(&v, "allow_hosts");
     let deny_hosts = strings_of(&v, "deny_hosts");
     Ok(Request {
@@ -60,6 +62,7 @@ fn parse_request(line: &str) -> Result<Request, String> {
         timeout_s,
         net,
         geo,
+        bind,
         allow_hosts,
         deny_hosts,
     })
@@ -184,6 +187,16 @@ fn bwrap_argv(req: &Request, ruleset_path: Option<&str>) -> Vec<String> {
         }
     } else if !req.net {
         a.push("--unshare-net".into());
+    }
+    // Writable binds: "host:guest" (e.g. the harness workdir + HOME).
+    // The guest path is created writable inside the cage; host is the real
+    // location. Runs AFTER ro system binds so rw mounts win.
+    for b in &req.bind {
+        let host = b.split(":").next().unwrap_or_default().to_string();
+        let guest = b.split(":").nth(1).unwrap_or(&host).to_string();
+        a.push("--bind".into());
+        a.push(host);
+        a.push(guest);
     }
     a.push("--".into());
     if req.geo.is_some() {
@@ -415,6 +428,7 @@ fn main() {
                 timeout_s: None,
                 net,
                 geo,
+                bind: Vec::new(),
                 allow_hosts: Vec::new(),
                 deny_hosts: Vec::new(),
             };
@@ -537,6 +551,7 @@ mod tests {
             timeout_s: None,
             net: false,
             geo: None,
+            bind: Vec::new(),
             allow_hosts: Vec::new(),
             deny_hosts: Vec::new(),
         };
@@ -552,6 +567,29 @@ mod tests {
         assert!(!a2.contains(&"--unshare-net".to_string()));
     }
 
+    #[test]
+    fn bind_writable_mounts_in_cage() {
+        let req = Request {
+            id: 1,
+            cmd: vec!["bash".into()],
+            cwd: None,
+            timeout_s: None,
+            net: false,
+            geo: None,
+            bind: vec!["/home/x:/home/x".into()],
+            allow_hosts: Vec::new(),
+            deny_hosts: Vec::new(),
+        };
+        let a = bwrap_argv(&req, None);
+        let mut seen_bind = false;
+        for i in 0..a.len() {
+            if a[i] == "--bind" && a[i + 1] == "/home/x" && a[i + 2] == "/home/x" {
+                seen_bind = true;
+            }
+        }
+        assert!(seen_bind, "requested writable bind must be in the argv");
+    }
+
     // s07: geo pins the nft ruleset + caps into the cage; the inner
     // unshare -n puts the rules in the cage-owned netns.
     #[test]
@@ -563,6 +601,7 @@ mod tests {
             timeout_s: None,
             net: false,
             geo: Some("RU".into()),
+            bind: Vec::new(),
             allow_hosts: Vec::new(),
             deny_hosts: Vec::new(),
         };
@@ -590,6 +629,7 @@ mod tests {
             timeout_s: None,
             net: false,
             geo: None,
+            bind: Vec::new(),
             allow_hosts: vec!["github.com".into()],
             deny_hosts: vec!["evil.example".into()],
         };

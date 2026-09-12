@@ -49,6 +49,7 @@ class Cage:
         timeout_s=None,
         net=False,
         geo=None,
+        bind=(),
         allow_hosts=(),
         deny_hosts=(),
         id=0,
@@ -58,6 +59,7 @@ class Cage:
             "v": ENVELOPE,
             "cmd": list(cmd),
             "net": net,
+            "bind": list(bind),
             "allow_hosts": list(allow_hosts),
             "deny_hosts": list(deny_hosts),
         }
@@ -172,6 +174,20 @@ def test_cage_verdicts_deny_beats_allow():
     )
     actions = [v["action"] for v in r["verdicts"]]
     assert "deny" in actions and "allow" in actions
+
+
+def test_cage_writable_bind(tmp_path):
+    """The harness workdir must be visible + writable inside the cage."""
+    host = tmp_path / "wd"
+    host.mkdir()
+    r = Cage().run(
+        ["bash", "-c", "echo from-cage > out.txt; cat out.txt"],
+        cwd=host,
+        bind=[f"{host}:{host}"],
+    )
+    assert r["exit"] == 0
+    assert r["stdout"].strip() == "from-cage"
+    assert (host / "out.txt").read_text().strip() == "from-cage"
 
 
 if __name__ == "__main__":

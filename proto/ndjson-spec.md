@@ -15,6 +15,7 @@ schema can drive the cage (T6 property — replayable without curam's code).
   "timeout_s": 30,
   "net": false,
   "geo": "RU",
+  "bind": ["/home/x/project:/home/x/project", "/home/x:/home/x"],
   "allow_hosts": ["github.com"],
   "deny_hosts": ["evil.example"]
 }
@@ -29,6 +30,7 @@ schema can drive the cage (T6 property — replayable without curam's code).
 | `timeout_s` | int? | kill the cage after this many seconds; result gets `timed_out: true` |
 | `net` | bool | `false` → egress denied (`--unshare-net`); `true` → host netns |
 | `geo` | string? | ISO-3166 country code; loads `<lists>/geo/<CODE>/list.json` CIDRs into the cage's own netns via nftables and drops egress to them (e01s07) |
+| `bind` | `[string]` | writable `host:guest` mounts into the cage (e.g. the harness workdir + HOME so git/pip/cargo work); default empty |
 | `allow_hosts` | `[string]` | hostname suffix allowlist → `host_allow` verdicts |
 | `deny_hosts` | `[string]` | hostname suffix denylist → `host_deny` verdicts (deny beats allow) |
 
