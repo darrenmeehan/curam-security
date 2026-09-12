@@ -38,8 +38,7 @@ pub struct ListDoc {
 /// Parse a `list.json` document. `rev` and `entries` are required;
 /// the manifest metadata fields default to "" when absent (older lists).
 pub fn parse_list(text: &str) -> Result<ListDoc, String> {
-    let v: Value =
-        serde_json::from_str(text).map_err(|e| format!("bad json: {e}"))?;
+    let v: Value = serde_json::from_str(text).map_err(|e| format!("bad json: {e}"))?;
     let entries: Vec<String> = match v.get("entries").and_then(|e| e.as_array()) {
         Some(arr) => arr
             .iter()
@@ -47,10 +46,7 @@ pub fn parse_list(text: &str) -> Result<ListDoc, String> {
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
-    let rev: u64 = match v.get("rev").and_then(|r| r.as_u64()) {
-        Some(r) => r,
-        None => 0,
-    };
+    let rev: u64 = v.get("rev").and_then(|r| r.as_u64()).unwrap_or_default();
     Ok(ListDoc {
         source_url: str_of(&v, "source_url"),
         license: str_of(&v, "license"),
@@ -92,7 +88,10 @@ pub fn render_list(
     m.insert("refreshed_at".to_owned(), refreshed_at.into());
     m.insert("rev".to_owned(), rev.into());
     m.insert("entries".to_owned(), (*entries).into());
-    m.insert("sha256".to_owned(), sha256_hex(&entries_canonical(entries)).into());
+    m.insert(
+        "sha256".to_owned(),
+        sha256_hex(&entries_canonical(entries)).into(),
+    );
     let v: Value = m.into();
     serde_json::to_string(&v).expect("render list.json")
 }
@@ -146,9 +145,7 @@ pub fn load_list(lists_dir: &Path, name: &str) -> Result<Option<ListDoc>, String
     if doc.rev < last {
         return Err(format!(
             "stale rev {} < last-installed {} for list {}",
-            doc.rev,
-            last,
-            name
+            doc.rev, last, name
         ));
     }
     Ok(Some(doc))
@@ -178,8 +175,7 @@ pub fn update_list(lists_dir: &Path, name: &str, fetched: &str) -> Result<u64, S
     if doc.rev <= last {
         return Err(format!(
             "pin rejected: rev {} not > last-installed {} (rollback)",
-            doc.rev,
-            last
+            doc.rev, last
         ));
     }
 
@@ -198,7 +194,7 @@ pub fn update_list(lists_dir: &Path, name: &str, fetched: &str) -> Result<u64, S
     std::fs::rename(&staging, &live).map_err(|e| format!("swap {staging:?} -> {live:?}: {e}"))?;
 
     // Advance the high-water mark only after the swap succeeded.
-    std::fs::write(&dir.join(".last-rev"), format!("{}", doc.rev).as_bytes())
+    std::fs::write(dir.join(".last-rev"), format!("{}", doc.rev).as_bytes())
         .map_err(|e| format!("write .last-rev: {e}"))?;
     Ok(doc.rev)
 }
@@ -208,10 +204,7 @@ mod tests {
     use super::*;
 
     fn lists_dir(tag: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "curamsec-lists-{tag}-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("curamsec-lists-{tag}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
@@ -235,8 +228,7 @@ mod tests {
         let dir = lists_dir("upd");
         let good = fetched_list(&["evil.example", "malware.test"], 7);
         update_list(&dir, "deny", &good).expect("pin installs");
-        let live =
-            std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
+        let live = std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
         assert_eq!(parse_list(&live).unwrap().rev, 7);
         assert_eq!(std::fs::read_to_string(&staging_path(&dir)).is_err(), true);
 
@@ -251,16 +243,13 @@ mod tests {
     #[test]
     fn lists_atomic_swap_never_exposes_partial() {
         let dir = lists_dir("atomic");
-        update_list(&dir, "deny", &fetched_list(&["evil.example"], 1))
-            .expect("first install");
+        update_list(&dir, "deny", &fetched_list(&["evil.example"], 1)).expect("first install");
 
         // Simulate a tampered local cache: staging writes garbage, live stays.
         std::fs::write(&staging_path(&dir), b"{\"rev\": nope").unwrap();
-        let live_before =
-            std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
+        let live_before = std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
         assert!(update_list(&dir, "deny", &fetched_list(&["evil.example"], 2)).is_ok());
-        let live_after =
-            std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
+        let live_after = std::fs::read_to_string(&live_path(&dir, "deny")).expect("live list");
         assert_ne!(live_before, live_after, "swap must replace the live list");
         let no_staging = std::fs::read_to_string(&staging_path(&dir)).is_err();
         assert!(no_staging, "staging file must not linger");
@@ -270,8 +259,7 @@ mod tests {
     #[test]
     fn lists_load_and_reject_tampered_and_stale() {
         let dir = lists_dir("load");
-        update_list(&dir, "deny", &fetched_list(&["evil.example"], 3))
-            .expect("install rev 3");
+        update_list(&dir, "deny", &fetched_list(&["evil.example"], 3)).expect("install rev 3");
 
         // Tamper with the entries on disk (hash no longer matches).
         let path = live_path(&dir, "deny");
@@ -284,8 +272,7 @@ mod tests {
         // Stale rev: an old snapshot (rev < .last-rev) is rejected even
         // though its own sha256 is internally consistent.
         std::fs::remove_file(&path).unwrap();
-        update_list(&dir, "deny", &fetched_list(&["evil.example"], 5))
-            .expect("install rev 5");
+        update_list(&dir, "deny", &fetched_list(&["evil.example"], 5)).expect("install rev 5");
         // replay the rev-3 list: internally valid, but below the mark
         std::fs::write(&path, fetched_list(&["evil.example"], 3).as_bytes()).unwrap();
         let r2 = load_list(&dir, "deny");

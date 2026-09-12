@@ -49,7 +49,10 @@ pub const ALWAYS_ASK: &[&str] = &[
 /// Flags that escalate a (usually-safe) program to "ask" (policy.py
 /// `ASK_FLAGS`).
 pub const ASK_FLAGS: &[(&str, &[&str])] = &[
-    ("git", &["push", "reset", "clean", "gc", "filter-branch", "rm"]),
+    (
+        "git",
+        &["push", "reset", "clean", "gc", "filter-branch", "rm"],
+    ),
     ("curl", &["-o", "-O", "--output", "--remote-name"]),
     ("wget", &["-o", "-O", "--output-document"]),
     ("scp", &["-r"]),

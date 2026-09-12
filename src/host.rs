@@ -184,10 +184,7 @@ mod tests {
 
     #[test]
     fn load_lists_from_disk() {
-        let dir = std::env::temp_dir().join(format!(
-            "curamsec-lists-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("curamsec-lists-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("allow")).unwrap();
         std::fs::create_dir_all(dir.join("deny")).unwrap();
 
@@ -197,9 +194,16 @@ mod tests {
             "",
             "",
             7,
-            &vec!["files.pythonhosted.org".to_owned(), "pypi.org".to_owned()]
+            &vec!["files.pythonhosted.org".to_owned(), "pypi.org".to_owned()],
         );
-        let deny = lists::render_list("https://example.test/deny", "CC0", "", "", 2, &["evil.example".to_owned()]);
+        let deny = lists::render_list(
+            "https://example.test/deny",
+            "CC0",
+            "",
+            "",
+            2,
+            &["evil.example".to_owned()],
+        );
         std::fs::write(&dir.join("allow").join("list.json"), allow.as_bytes()).unwrap();
         std::fs::write(&dir.join("deny").join("list.json"), deny.as_bytes()).unwrap();
 

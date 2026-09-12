@@ -105,7 +105,9 @@ fn effective_prog(argv: &[String]) -> Option<&str> {
     while i < argv.len() && rules::WRAPPERS.contains(&argv[i].as_str()) {
         i += 1;
     }
-    argv.get(i).map(|s| s.as_str()).or_else(|| argv.first().map(|s| s.as_str()))
+    argv.get(i)
+        .map(|s| s.as_str())
+        .or_else(|| argv.first().map(|s| s.as_str()))
 }
 
 /// Classify a command string → `Verdict` in {allow, ask, deny}.
@@ -345,8 +347,8 @@ fn reload_host_lists() -> PyResult<()> {
 #[pyo3(signature = (lists_dir, name, fetched))]
 fn lists_update(lists_dir: &str, name: &str, fetched: &str) -> PyResult<String> {
     let dir = std::path::PathBuf::from(lists_dir);
-    let rev = lists::update_list(&dir, name, fetched)
-        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+    let rev =
+        lists::update_list(&dir, name, fetched).map_err(pyo3::exceptions::PyValueError::new_err)?;
     Ok(format!("updated {name} @ rev {rev}"))
 }
 
@@ -374,7 +376,11 @@ impl Advisory {
     #[new]
     #[allow(clippy::too_many_arguments)]
     fn new(id: String, summary: String, severity: String) -> Self {
-        Self { id, summary, severity }
+        Self {
+            id,
+            summary,
+            severity,
+        }
     }
 }
 
@@ -479,11 +485,10 @@ mod parity_serial_tests {
 
     #[test]
     fn parity_fixture_matches_policy_py() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/parity_fixture.json");
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity_fixture.json");
         let text = std::fs::read_to_string(&path).expect("fixture present");
-        let v: serde_json::Value =
-            serde_json::from_str(&text).expect("fixture is valid json");
+        let v: serde_json::Value = serde_json::from_str(&text).expect("fixture is valid json");
         let cases = v["cases"].as_array().unwrap();
         assert!(!cases.is_empty(), "fixture must not be empty");
         for c in cases {

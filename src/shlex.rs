@@ -82,7 +82,10 @@ mod tests {
 
     #[test]
     fn handles_quotes() {
-        assert_eq!(split("bash -c 'echo hi'").unwrap(), vec!["bash", "-c", "echo hi"]);
+        assert_eq!(
+            split("bash -c 'echo hi'").unwrap(),
+            vec!["bash", "-c", "echo hi"]
+        );
         assert_eq!(split("echo \"a b\"").unwrap(), vec!["echo", "a b"]);
         // unterminated quote -> Err (Python raises ValueError)
         assert!(split("echo 'oops").is_err());

@@ -8,8 +8,9 @@ import hashlib
 import json
 from pathlib import Path
 
-import curamsec
 import pytest
+
+import curamsec
 
 
 def make_list(entries, rev):
