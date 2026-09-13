@@ -26,6 +26,8 @@ pub mod host;
 pub mod lists;
 pub mod osv;
 pub mod rules;
+pub mod rules_probe;
+pub mod scrub;
 pub mod shlex;
 
 use host::{HostMatcher, Match};
@@ -99,8 +101,11 @@ pub fn classify_rules(
     ask_rules: Option<Vec<String>>,
     deny_rules: Option<Vec<String>>,
 ) -> Verdict {
-    let (extra_allow, extra_ask, extra_deny) =
-        extra_lists(&allow_rules.unwrap_or_default(), &ask_rules.unwrap_or_default(), &deny_rules.unwrap_or_default());
+    let (extra_allow, extra_ask, extra_deny) = extra_lists(
+        &allow_rules.unwrap_or_default(),
+        &ask_rules.unwrap_or_default(),
+        &deny_rules.unwrap_or_default(),
+    );
 
     // Unparseable (incl. empty) → ask, mirroring policy.py.
     let argv = match shlex::split(command) {
@@ -356,20 +361,35 @@ mod tests {
         let none: Option<Vec<String>> = None;
         // per-project ask: a normally-allowed program becomes ask
         assert_eq!(
-            classify_rules("tsc --watch", none.clone(), Some(vec!["tsc".to_string()]), none.clone())
-                .action,
+            classify_rules(
+                "tsc --watch",
+                none.clone(),
+                Some(vec!["tsc".to_string()]),
+                none.clone()
+            )
+            .action,
             "ask"
         );
         // per-project deny overrides (no ask/allow can beat deny order)
         assert_eq!(
-            classify_rules("git status", none.clone(), none.clone(), Some(vec!["git".to_string()]))
-                .action,
+            classify_rules(
+                "git status",
+                none.clone(),
+                none.clone(),
+                Some(vec!["git".to_string()])
+            )
+            .action,
             "deny"
         );
         // per-project allow overrides the built-in always-ask table
         assert_eq!(
-            classify_rules("rm file.txt", Some(vec!["rm".to_string()]), none.clone(), none.clone())
-                .action,
+            classify_rules(
+                "rm file.txt",
+                Some(vec!["rm".to_string()]),
+                none.clone(),
+                none.clone()
+            )
+            .action,
             "allow"
         );
     }
