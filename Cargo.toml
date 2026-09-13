@@ -1,24 +1,14 @@
-[package]
-name = "curamsec"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0 OR MIT"
-description = "curam security core — classify / scan_context / match_host / check_pkg"
+# curam security core — Cargo workspace.
+#
+#   crates/curam-core — pure-Rust security logic (no Python, no pyo3):
+#                       linked directly by the native Rust harness.
+#   crates/curamsec   — pyo3 shim: abi3 wheel surface over curam-core
+#                       (classify / scan_context / match_host / check_pkg
+#                       + Verdict / Finding / HostMatcherPy / Advisory).
+#   bin/curam-run     — the bwrap cage binary (ndjson cage/1 contract).
 
-[lib]
-name = "curamsec"
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "curam-run"
-path = "src/bin/curam_run.rs"
-
-[dependencies]
-pyo3 = { version = "0.27", features = ["abi3-py38", "extension-module"] }
-sha2 = "0.10"
-regex = "1"
-aho-corasick = "1"
-serde_json = "1"
+[workspace]
+members = ["crates/curam-core", "crates/curamsec", "bin/curam-run"]
 
 [profile.release]
 lto = true

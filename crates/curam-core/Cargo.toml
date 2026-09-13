@@ -1,0 +1,15 @@
+[package]
+name = "curam-core"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0 OR MIT"
+description = "curam security core (pure Rust): classify / scan_context / match_host / check_pkg + verified lists"
+
+[lib]
+name = "curam_core"
+
+[dependencies]
+aho-corasick = "1"
+regex = "1"
+serde_json = "1"
+sha2 = "0.10"

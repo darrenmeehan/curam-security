@@ -1,30 +1,36 @@
-//! curam security core — PyO3 module.
+//! curam-core — pure-Rust security core for the curam harness.
+//!
+//! The classification/matching/list logic extracted from the pyo3 crate so
+//! native consumers (the Rust harness) can link it without any Python
+//! runtime. `crates/curamsec` is now a thin wrapper over this crate; the
+//! abi3 wheel surface is unchanged and behavior parity is guarded by the
+//! parity fixture test in this crate plus `tests/test_parity.py` (Python
+//! policy.py vs curamsec over the live command battery).
 //!
 //! Stories:
-//!   e01s01 — maturin/pyo3/abi3 skeleton + `classify()` + Verdict provenance.
+//!   e01s01 — classify() + Verdict provenance.
 //!   e01s02 — full policy.py port (allow/ask/deny tables + deny patterns +
-//!            shell tokens) verified by a parity fixture against the Python
-//!            source of truth.
-//!   e01s03 — injection defense: `classify` asks on exec of repo-derived
-//!            content, `scan_context` flags injection phrases.
-//!   e01s04 — `match_host` label-suffix trie with allow-over-deny + lists
-//!            loaded from disk.
+//!            shell tokens) verified by a parity fixture.
+//!   e01s03 — injection defense: classify asks on exec of repo-derived
+//!            content, scan_context flags injection phrases.
+//!   e01s04 — match_host label-suffix trie with allow-over-deny + lists
+//!            loaded from disk (verified, monotonic rev).
+//!   e01s08 — check_pkg OSV advisory lookup against the offline fixture.
 
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use aho_corasick::AhoCorasick;
-use pyo3::prelude::*;
 use regex::Regex;
 
-mod host;
-mod lists;
-mod osv;
-mod rules;
-mod shlex;
+pub mod host;
+pub mod lists;
+pub mod osv;
+pub mod rules;
+pub mod shlex;
 
 use host::{HostMatcher, Match};
 
-/// Compiled deny regexes with their rule ids (policy.py `DENY_PATTERNS`).
+/// Compiled deny regexes with their rule ids (rules::DENY_PATTERNS).
 fn deny_regexes() -> &'static Vec<(String, Regex)> {
     static DENY: OnceLock<Vec<(String, Regex)>> = OnceLock::new();
     DENY.get_or_init(|| {
@@ -43,43 +49,16 @@ fn shell_token_matcher() -> &'static AhoCorasick {
 }
 
 /// A single classification, with the full provenance chain.
-#[pyclass(module = "curamsec")]
 #[derive(Clone)]
 pub struct Verdict {
-    #[pyo3(get)]
-    action: String,
-    #[pyo3(get)]
-    rule_id: String,
-    #[pyo3(get)]
-    source: String,
-    #[pyo3(get)]
-    source_hash: String,
-    #[pyo3(get)]
-    evidence: String,
+    pub action: String,
+    pub rule_id: String,
+    pub source: String,
+    pub source_hash: String,
+    pub evidence: String,
 }
 
-#[pymethods]
-impl Verdict {
-    #[new]
-    #[allow(clippy::too_many_arguments)]
-    fn new(
-        action: String,
-        rule_id: String,
-        source: String,
-        source_hash: String,
-        evidence: String,
-    ) -> Self {
-        Self {
-            action,
-            rule_id,
-            source,
-            source_hash,
-            evidence,
-        }
-    }
-}
-
-fn verdict(action: &str, rule_id: &str, evidence: &str) -> Verdict {
+pub fn verdict(action: &str, rule_id: &str, evidence: &str) -> Verdict {
     Verdict {
         action: action.into(),
         rule_id: rule_id.into(),
@@ -87,16 +66,6 @@ fn verdict(action: &str, rule_id: &str, evidence: &str) -> Verdict {
         source_hash: rules::rules_hash(),
         evidence: evidence.into(),
     }
-}
-
-fn extra_lists(allow_rules: &[String]) -> (Vec<String>, Vec<String>, Vec<String>) {
-    let deny: Vec<String> = Vec::new();
-    let ask: Vec<String> = Vec::new();
-    let mut allow: Vec<String> = Vec::new();
-    for a in allow_rules {
-        allow.push(a.clone());
-    }
-    (allow, ask, deny)
 }
 
 /// Strip wrapper programs to find the program actually executed
@@ -113,12 +82,9 @@ fn effective_prog(argv: &[String]) -> Option<&str> {
 
 /// Classify a command string → `Verdict` in {allow, ask, deny}.
 ///
-/// `allow_rules` carries extra allow-listed programs (contract's
-/// `classify(cmd, allow_rules=...)`), matching policy.py's
-/// `cfg.policy.rules.allow`.
-#[pyfunction]
-#[pyo3(signature = (command, allow_rules = None))]
-fn classify(command: &str, allow_rules: Option<Vec<String>>) -> Verdict {
+/// `allow_rules` carries extra allow-listed programs (policy.py's
+/// `cfg.policy.rules.allow`).
+pub fn classify(command: &str, allow_rules: Option<Vec<String>>) -> Verdict {
     let allow_rules = allow_rules.unwrap_or_default();
     let (extra_allow, extra_ask, extra_deny) = extra_lists(&allow_rules);
 
@@ -184,6 +150,16 @@ fn classify(command: &str, allow_rules: Option<Vec<String>>) -> Verdict {
     verdict("allow", "no_rule", command)
 }
 
+fn extra_lists(allow_rules: &[String]) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let deny: Vec<String> = Vec::new();
+    let ask: Vec<String> = Vec::new();
+    let mut allow: Vec<String> = Vec::new();
+    for a in allow_rules {
+        allow.push(a.clone());
+    }
+    (allow, ask, deny)
+}
+
 /// True when a shell's argument (skipping flags and `-c` inline code) is a
 /// repo-relative path — i.e. executing file-derived, untrusted content.
 fn exec_repo_script(command: &str) -> bool {
@@ -212,32 +188,22 @@ fn exec_repo_script(command: &str) -> bool {
 }
 
 /// One injection finding from scan_context.
-#[pyclass(module = "curamsec")]
 #[derive(Clone)]
 pub struct Finding {
-    #[pyo3(get)]
-    rule_id: String,
-    #[pyo3(get)]
-    evidence: String,
-}
-
-#[pymethods]
-impl Finding {
-    #[new]
-    fn new(rule_id: String, evidence: String) -> Self {
-        Self { rule_id, evidence }
-    }
+    pub rule_id: String,
+    pub evidence: String,
 }
 
 /// Scan free text for embedded injection phrases (e01s03).
-#[pyfunction]
-#[pyo3(signature = (text, threshold = 1))]
-fn scan_context(text: &str, threshold: usize) -> Vec<Finding> {
+pub fn scan_context(text: &str, threshold: usize) -> Vec<Finding> {
     let lower = text.to_lowercase();
     let mut findings = Vec::new();
     for (id, pat) in rules::INJECTION_PATTERNS {
         if lower.contains(&pat.to_lowercase()) {
-            findings.push(Finding::new(id.to_string(), (*pat).to_string()));
+            findings.push(Finding {
+                rule_id: id.to_string(),
+                evidence: (*pat).to_string(),
+            });
         }
     }
     if findings.len() < threshold {
@@ -247,31 +213,7 @@ fn scan_context(text: &str, threshold: usize) -> Vec<Finding> {
     }
 }
 
-/// A host matcher for `match_host`, holding allow + deny suffix sets.
-#[pyclass(module = "curamsec")]
-struct HostMatcherPy {
-    inner: HostMatcher,
-}
-
-#[pymethods]
-impl HostMatcherPy {
-    #[new]
-    fn new(allow: Vec<String>, deny: Vec<String>) -> Self {
-        let allow: Vec<&str> = allow.iter().map(|s| s.as_str()).collect();
-        let deny: Vec<&str> = deny.iter().map(|s| s.as_str()).collect();
-        Self {
-            inner: HostMatcher::new(&allow, &deny),
-        }
-    }
-
-    /// `allow_mode` restricts the query to the allowlist (deny ignored).
-    #[pyo3(signature = (host, allow_mode = false))]
-    fn lookup(&self, host: &str, allow_mode: bool) -> Verdict {
-        host_verdict(self.inner.lookup(host, allow_mode))
-    }
-}
-
-fn host_verdict(m: Match) -> Verdict {
+pub fn host_verdict(m: Match) -> Verdict {
     match m {
         Match::Allow => verdict("allow", "host_allow", "matched allow suffix"),
         Match::Deny => verdict("deny", "host_deny", "matched deny suffix"),
@@ -321,88 +263,24 @@ fn matcher() -> MutexGuard<'static, HostMatcher> {
 }
 
 /// Resolve a hostname against the allow/deny suffix sets (e01s04).
-#[pyfunction]
-#[pyo3(signature = (host, allow = false))]
-fn match_host(host: &str, allow: bool) -> Verdict {
+pub fn match_host(host: &str, allow: bool) -> Verdict {
     host_verdict(matcher().lookup(host, allow))
 }
 
-/// Reload host lists from disk (useful after a lists update).
-///
-/// Unlike the importer's lenient seed (falls back to built-in defaults on
-/// empty/missing lists), reload is *strict*: a tampered, stale or malformed
-/// list raises instead of silently weakening policy.
-#[pyfunction]
-fn reload_host_lists() -> PyResult<()> {
+/// Reload host lists from disk (strict: a tampered, stale or malformed list
+/// is an error instead of silently weakening policy). Error message shipped
+/// to the pyo3 layer without prefix (the shim adds "list load failed: ").
+pub fn reload_host_lists() -> Result<(), String> {
     let d = lists_dir().unwrap_or_else(|| std::path::PathBuf::from("/nonexistent/curam/lists"));
-    let m = host::matcher_from_lists_dir(&d)
-        .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("list load failed: {e}")))?;
+    let m = host::matcher_from_lists_dir(&d)?;
     *matcher() = m;
     Ok(())
 }
 
-/// Update (pin + verify + atomically swap) a list from a fetched snapshot.
-/// `fetched` is the raw text of a `list.json`; `rev` on it must be strictly
-/// greater than the last-installed rev or the pin is rejected.
-#[pyfunction]
-#[pyo3(signature = (lists_dir, name, fetched))]
-fn lists_update(lists_dir: &str, name: &str, fetched: &str) -> PyResult<String> {
-    let dir = std::path::PathBuf::from(lists_dir);
-    let rev =
-        lists::update_list(&dir, name, fetched).map_err(pyo3::exceptions::PyValueError::new_err)?;
-    Ok(format!("updated {name} @ rev {rev}"))
-}
-
 /// check_pkg — OSV advisory lookup against the offline fixture (e01s08).
-/// Affected version in a known range -> list of Advisory; clean -> [].
-#[pyfunction]
-#[pyo3(signature = (name, version = None))]
-fn check_pkg(name: &str, version: Option<&str>) -> Vec<Advisory> {
+/// Affected version in a known range -> Vec<Advisory>; clean -> [].
+pub fn check_pkg(name: &str, version: Option<&str>) -> Vec<osv::Advisory> {
     osv::check_pkg(name, version)
-        .iter()
-        .map(|a| Advisory::new(a.id.clone(), a.summary.clone(), a.severity.clone()))
-        .collect()
-}
-
-/// A package advisory (e01s08 will populate).
-#[pyclass(module = "curamsec")]
-#[derive(Clone)]
-pub struct Advisory {
-    #[pyo3(get)]
-    id: String,
-    #[pyo3(get)]
-    summary: String,
-    #[pyo3(get)]
-    severity: String,
-}
-
-#[pymethods]
-impl Advisory {
-    #[new]
-    #[allow(clippy::too_many_arguments)]
-    fn new(id: String, summary: String, severity: String) -> Self {
-        Self {
-            id,
-            summary,
-            severity,
-        }
-    }
-}
-
-#[pymodule]
-fn curamsec(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<Verdict>()?;
-    m.add_class::<Finding>()?;
-    m.add_class::<HostMatcherPy>()?;
-    m.add_class::<Advisory>()?;
-    m.add_function(wrap_pyfunction!(classify, m)?)?;
-    m.add_function(wrap_pyfunction!(scan_context, m)?)?;
-    m.add_function(wrap_pyfunction!(match_host, m)?)?;
-    m.add_function(wrap_pyfunction!(reload_host_lists, m)?)?;
-    m.add_function(wrap_pyfunction!(lists_update, m)?)?;
-    m.add_function(wrap_pyfunction!(check_pkg, m)?)?;
-    m.add("__version__", "0.1.0")?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -483,15 +361,15 @@ mod tests {
     }
 }
 
-/// Load the parity fixture and assert Rust `classify` matches policy.py.
 #[cfg(test)]
 mod parity_serial_tests {
     use super::*;
 
     #[test]
     fn parity_fixture_matches_policy_py() {
-        let path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity_fixture.json");
+        // Fixture lives at the workspace root: tests/parity_fixture.json.
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/parity_fixture.json");
         let text = std::fs::read_to_string(&path).expect("fixture present");
         let v: serde_json::Value = serde_json::from_str(&text).expect("fixture is valid json");
         let cases = v["cases"].as_array().unwrap();

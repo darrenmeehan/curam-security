@@ -52,14 +52,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "curamsec"
+name = "curam-core"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
- "pyo3",
  "regex",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "curam-run"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "curamsec"
+version = "0.1.0"
+dependencies = [
+ "curam-core",
+ "pyo3",
 ]
 
 [[package]]
