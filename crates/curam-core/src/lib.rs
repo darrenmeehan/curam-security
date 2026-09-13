@@ -83,10 +83,24 @@ fn effective_prog(argv: &[String]) -> Option<&str> {
 /// Classify a command string → `Verdict` in {allow, ask, deny}.
 ///
 /// `allow_rules` carries extra allow-listed programs (policy.py's
-/// `cfg.policy.rules.allow`).
+/// `cfg.policy.rules.allow`). The historic two-arg form — used by the pyo3
+/// shim (frozen Python surface) — is `classify_rules` with empty ask/deny.
 pub fn classify(command: &str, allow_rules: Option<Vec<String>>) -> Verdict {
-    let allow_rules = allow_rules.unwrap_or_default();
-    let (extra_allow, extra_ask, extra_deny) = extra_lists(&allow_rules);
+    classify_rules(command, allow_rules, None, None)
+}
+
+/// Classify with per-project allow/ask/deny overlays on top of the built-in
+/// tables (policy.py's `cfg.policy.rules`). Ask/deny arrive separately so a
+/// per-project deny can override an otherwise-allowed program, and a
+/// per-project ask can flag anything — full policy.py parity through the core.
+pub fn classify_rules(
+    command: &str,
+    allow_rules: Option<Vec<String>>,
+    ask_rules: Option<Vec<String>>,
+    deny_rules: Option<Vec<String>>,
+) -> Verdict {
+    let (extra_allow, extra_ask, extra_deny) =
+        extra_lists(&allow_rules.unwrap_or_default(), &ask_rules.unwrap_or_default(), &deny_rules.unwrap_or_default());
 
     // Unparseable (incl. empty) → ask, mirroring policy.py.
     let argv = match shlex::split(command) {
@@ -150,9 +164,19 @@ pub fn classify(command: &str, allow_rules: Option<Vec<String>>) -> Verdict {
     verdict("allow", "no_rule", command)
 }
 
-fn extra_lists(allow_rules: &[String]) -> (Vec<String>, Vec<String>, Vec<String>) {
-    let deny: Vec<String> = Vec::new();
-    let ask: Vec<String> = Vec::new();
+fn extra_lists(
+    allow_rules: &[String],
+    ask_rules: &[String],
+    deny_rules: &[String],
+) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let mut deny: Vec<String> = Vec::new();
+    for d in deny_rules {
+        deny.push(d.clone());
+    }
+    let mut ask: Vec<String> = Vec::new();
+    for a in ask_rules {
+        ask.push(a.clone());
+    }
     let mut allow: Vec<String> = Vec::new();
     for a in allow_rules {
         allow.push(a.clone());
@@ -323,6 +347,29 @@ mod tests {
         // add via allow_rules
         assert_eq!(
             classify("myrunner go", Some(vec!["myrunner".to_string()])).action,
+            "allow"
+        );
+    }
+
+    #[test]
+    fn classify_rules_ask_and_deny_overlays() {
+        let none: Option<Vec<String>> = None;
+        // per-project ask: a normally-allowed program becomes ask
+        assert_eq!(
+            classify_rules("tsc --watch", none.clone(), Some(vec!["tsc".to_string()]), none.clone())
+                .action,
+            "ask"
+        );
+        // per-project deny overrides (no ask/allow can beat deny order)
+        assert_eq!(
+            classify_rules("git status", none.clone(), none.clone(), Some(vec!["git".to_string()]))
+                .action,
+            "deny"
+        );
+        // per-project allow overrides the built-in always-ask table
+        assert_eq!(
+            classify_rules("rm file.txt", Some(vec!["rm".to_string()]), none.clone(), none.clone())
+                .action,
             "allow"
         );
     }
