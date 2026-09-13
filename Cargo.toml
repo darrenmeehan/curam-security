@@ -8,7 +8,7 @@
 #   bin/curam-run     — the bwrap cage binary (ndjson cage/1 contract).
 
 [workspace]
-members = ["crates/curam-core", "crates/curamsec", "bin/curam-run"]
+members = ["crates/curam-core", "crates/curamsec", "bin/curam-run", "bin/curam-membrane"]
 
 [profile.release]
 lto = true

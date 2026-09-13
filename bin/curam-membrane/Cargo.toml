@@ -1,0 +1,14 @@
+[package]
+name = "curam-membrane"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0 OR MIT"
+description = "curam boundary engine — scrub/audit over stdio (ndjson mem/1 contract)"
+
+[[bin]]
+name = "curam-membrane"
+path = "src/main.rs"
+
+[dependencies]
+curam-core = { path = "../../crates/curam-core" }
+serde_json = "1"

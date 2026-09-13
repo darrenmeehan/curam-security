@@ -62,6 +62,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "curam-membrane"
+version = "0.1.0"
+dependencies = [
+ "curam-core",
+ "serde_json",
+]
+
+[[package]]
 name = "curam-run"
 version = "0.1.0"
 dependencies = [
