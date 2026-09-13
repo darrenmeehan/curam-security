@@ -109,7 +109,9 @@ impl HostMatcherPy {
     /// `allow_mode` restricts the query to the allowlist (deny ignored).
     #[pyo3(signature = (host, allow_mode = false))]
     fn lookup(&self, host: &str, allow_mode: bool) -> Verdict {
-        verdict_to_py(curam_core::host_verdict(self.inner.lookup(host, allow_mode)))
+        verdict_to_py(curam_core::host_verdict(
+            self.inner.lookup(host, allow_mode),
+        ))
     }
 }
 
