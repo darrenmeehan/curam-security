@@ -14,6 +14,7 @@
 use std::sync::OnceLock;
 
 use regex::Regex;
+use sha2::{Digest, Sha256};
 
 pub const DEFAULT_PLACEHOLDER: &str = "{REDACTED}";
 
@@ -73,10 +74,19 @@ pub struct SpanHit {
     pub count: usize,
 }
 
-/// The scrub receipt: scrubbed text + per-kind hits + span total.
+/// One scrubbed secret: kind + a 12-hex fingerprint of the value
+/// (sha256(value)[:12]) — enough to identify a leaked key for rotation,
+/// never the secret itself.
+pub struct ScrubHit {
+    pub kind: String,
+    pub fingerprint: String,
+}
+
+/// The scrub receipt: scrubbed text + per-kind hits + match fingerprints.
 pub struct ScrubResult {
     pub text: String,
     pub manifest: Vec<SpanHit>,
+    pub hits: Vec<ScrubHit>,
     pub spans_masked: u64,
 }
 
@@ -142,34 +152,50 @@ impl Sanitizer {
         self.scrub_with_manifest(text).text
     }
 
-    /// Mask secrets and report per-kind hit counts (the receipt).
+    /// Mask secrets and report per-kind hit counts + value fingerprints.
     pub fn scrub_with_manifest(&mut self, text: &str) -> ScrubResult {
         if !self.enabled() || text.is_empty() {
             return ScrubResult {
                 text: text.to_string(),
                 manifest: Vec::new(),
+                hits: Vec::new(),
                 spans_masked: 0,
             };
         }
         let mut out = text.to_string();
         let mut manifest = Vec::new();
+        let mut hits = Vec::new();
         let mut masked = 0;
         for (kind, re) in compiled_patterns() {
             if self.excluded(kind.as_str()) {
                 continue;
             }
-            let n = re.find_iter(out.as_str()).count();
-            if n > 0 {
-                manifest.push(SpanHit {
-                    kind: kind.clone(),
-                    count: n,
-                });
+            // Collect spans first (the iterator borrows `out`), then splice
+            // replacements back-to-front so earlier indexes stay valid.
+            let mut spans: Vec<Span> = Vec::new();
+            for m in re.find_iter(out.as_str()) {
+                spans.push(Span { start: m.start(), end: m.end() });
             }
-            masked += n;
             let replacement = format!("{}:{}", self.placeholder, kind);
-            out = re
-                .replace_all(out.as_str(), replacement.as_str())
-                .to_string();
+            let mut i = spans.len();
+            while i > 0 {
+                i -= 1;
+                let s = spans[i];
+                hits.push(ScrubHit {
+                    kind: kind.clone(),
+                    fingerprint: fingerprint12(&out[s.start..s.end]),
+                });
+                out = format!(
+                    "{}{}{}",
+                    &out[0..s.start],
+                    replacement,
+                    &out[s.end..out.len()]
+                );
+            }
+            if !spans.is_empty() {
+                manifest.push(SpanHit { kind: kind.clone(), count: spans.len() });
+            }
+            masked += spans.len();
         }
         if !self.excluded("domain") {
             for dom in &self.internal_domains {
@@ -201,9 +227,45 @@ impl Sanitizer {
         ScrubResult {
             text: out,
             manifest,
+            hits,
             spans_masked: masked as u64,
         }
     }
+}
+
+#[derive(Copy, Clone)]
+struct Span {
+    start: usize,
+    end: usize,
+}
+
+/// `sha256(value)[:12]` — content fingerprint, never the secret.
+fn fingerprint12(raw: &str) -> String {
+    let mut s = Sha256::new();
+    s.update(raw.as_bytes());
+    hex(&s.finalize())[0..12].to_string()
+}
+
+/// Hash over the pattern set itself, so audit rows pin the exact regexes
+/// that made each mask decision (sibling of rules::rules_hash).
+pub fn scrub_hash() -> String {
+    let mut s = Sha256::new();
+    s.update(b"scrub-v1\n");
+    for (kind, pat) in PATTERNS {
+        s.update(kind.as_bytes());
+        s.update(b"\n");
+        s.update(pat.as_bytes());
+        s.update(b"\n");
+    }
+    hex(&s.finalize())
+}
+
+fn hex(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        out.push_str(&format!("{b:02x}"));
+    }
+    out
 }
 
 #[cfg(test)]
@@ -281,10 +343,42 @@ mod tests {
     #[test]
     fn manifest_reports_kinds() {
         let mut s = scrubber("deterministic");
-        let r = s.scrub_with_manifest("token=abcdefghijklmnop123456 mail a@b.com");
+        let r = s.scrub_with_manifest(
+            "token=abcdefghijklmnop123456 mail a@b.com sk-abcdefghijklmnop"
+        );
         assert!(r.manifest.len() >= 2, "two classes hit");
         assert!(r.text.contains("{REDACTED}:key_value"));
         assert!(r.text.contains("{REDACTED}:email"));
         assert!(r.spans_masked >= 2, "span count matches manifest");
+        assert!(r.hits.len() >= 3, "one fingerprint per matched value");
+        for h in &r.hits {
+            assert_eq!(h.fingerprint.len(), 12, "fingerprint is 12 hex chars");
+        }
+    }
+
+    #[test]
+    fn fingerprints_are_stable_and_value_linked() {
+        let mut s = scrubber("deterministic");
+        let a = s.scrub_with_manifest("sk-abcdefghijklmnop x");
+        let b = s.scrub_with_manifest("y sk-abcdefghijklmnop");
+        let c = s.scrub_with_manifest("sk-zzzzzzzzzzzzzzzzzz x");
+        assert_eq!(
+            a.hits[0].fingerprint,
+            b.hits[0].fingerprint,
+            "same value, same fingerprint"
+        );
+        assert!(
+            a.hits[0].fingerprint != c.hits[0].fingerprint,
+            "different value, different fingerprint"
+        );
+        assert!(!a.text.contains("sk-abcdefghijklmnop"), "value never in text");
+    }
+
+    #[test]
+    fn scrub_hash_is_stable() {
+        let h1 = scrub_hash();
+        let h2 = scrub_hash();
+        assert_eq!(h1, h2, "pattern hash is deterministic");
+        assert_eq!(h1.len(), 64, "sha256 hex");
     }
 }

@@ -42,6 +42,17 @@ fn manifest_value(hits: &Vec<scrub::SpanHit>) -> Value {
     Value::Array(arr)
 }
 
+fn hits_value(hits: &Vec<scrub::ScrubHit>) -> Value {
+    let mut arr = Vec::new();
+    for h in hits {
+        let mut m = serde_json::Map::new();
+        m.insert("kind".to_owned(), h.kind.clone().into());
+        m.insert("fingerprint".to_owned(), h.fingerprint.clone().into());
+        arr.push(Value::Object(m));
+    }
+    Value::Array(arr)
+}
+
 fn op_mask(id: u64, payload: &Value) -> String {
     let text = payload
         .get("text")
@@ -53,8 +64,10 @@ fn op_mask(id: u64, payload: &Value) -> String {
     let mut m = serde_json::Map::new();
     m.insert("scrubbed".to_owned(), r.text.into());
     m.insert("manifest".to_owned(), manifest_value(&r.manifest));
+    m.insert("hits".to_owned(), hits_value(&r.hits));
     m.insert("rules_version".to_owned(), rules::RULES_VERSION.into());
     m.insert("rules_hash".to_owned(), rules::rules_hash().into());
+    m.insert("scrub_hash".to_owned(), scrub::scrub_hash().into());
     ok_json(id, m)
 }
 
