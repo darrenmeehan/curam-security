@@ -57,7 +57,7 @@ supported way in.
 ```bash
 cargo test                                  # Rust unit tests
 pytest                                      # Python-facing tests (needs the wheel)
-pytest -m parity                            # Rust-vs-Python cross-implementation parity
+pytest tests/test_parity.py                 # Rust-vs-Python cross-implementation parity
 ```
 
 `tests/contract_replay.py` replays the NDJSON contracts against a stub, so the
