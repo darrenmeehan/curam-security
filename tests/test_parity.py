@@ -4,11 +4,25 @@ Loads the harness's real policy.py and compares verdicts over a battery of
 commands. This is the live guard that the Rust port stays behavior-identical
 to the Python source of truth (e01s02 requirement 2).
 """
+import os
 import sys
+from pathlib import Path
+
+import pytest
 
 import curamsec
 
-HARNESS = "/home/darrenmeehan/code/curam/curam-harness-poc"
+HARNESS = Path(
+    os.environ.get("CURAM_HARNESS", "/home/darrenmeehan/code/curam/curam-harness-poc")
+)
+
+# A cross-repo check: it needs the POC checkout beside this one. CI has no such
+# checkout (the repo is private), so the comparison is skipped there and the
+# Rust-only test below still runs.
+needs_harness = pytest.mark.skipif(
+    not (HARNESS / "policy.py").exists(),
+    reason=f"harness checkout not present at {HARNESS} (set CURAM_HARNESS)",
+)
 
 # Commands exercising every rule branch (mirrors scripts/gen_parity_fixture.py).
 CASES = [
@@ -43,12 +57,13 @@ CASES = [
 
 def run_policy(cmd: str) -> str:
     """Import the harness's policy.check and return its action."""
-    sys.path.insert(0, HARNESS)
+    sys.path.insert(0, str(HARNESS))
     import policy  # noqa: PLC0415  (deliberate cross-repo import)
 
     return policy.check(cmd)["action"]
 
 
+@needs_harness
 def test_parity_matches_python():
     """Rust verdict == Python verdict for every command in the battery."""
     mismatches = []

@@ -14,12 +14,23 @@ jobs:
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-      # bwrap (the cage) is unprivileged on stock Ubuntu when user namespaces
-      # are enabled (they are in GH runners).
+      # bwrap (the cage) needs user namespaces; the "Let bwrap nest" step below
+      # lifts the AppArmor restriction that blocks them on ubuntu-latest.
       - name: Install bwrap + nft
         run: |
           sudo apt-get update
           sudo apt-get install -y bubblewrap nftables iproute2
+
+      # ubuntu-latest is 26.04 now: AppArmor restricts unprivileged user
+      # namespaces, so bwrap cannot create its own and every cage test fails
+      # with "setting up uid map: Permission denied". This turns the
+      # restriction off for the rest of the job.
+      - name: Let bwrap nest
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
 
       - name: Build curam-run (debug, for tests)
         run: cargo build --bin curam-run
