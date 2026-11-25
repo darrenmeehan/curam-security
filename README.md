@@ -5,7 +5,7 @@ curam component shares, plus the two binaries that expose it across process
 boundaries.
 
 Part of the four-repo curam set — see
-[`curam-harness/docs/REPOS.md`](../curam/curam-harness/docs/REPOS.md) for the
+[`curam-harness-poc/docs/REPOS.md`](../curam/curam-harness-poc/docs/REPOS.md) for the
 whole topology and why it is split this way.
 
 ## What is in here
@@ -69,9 +69,9 @@ Python implementations honest against each other.
 
 | Consumer | How it reaches the core |
 | --- | --- |
-| `curam-harness` (Python) | imports the `curamsec` wheel; spawns `curam-run` |
+| `curam-harness-poc` (Python) | imports the `curamsec` wheel; spawns `curam-run` |
 | `curam-harness-rs` (Rust) | path dependency on `crates/curam-core`; spawns `curam-run` |
-| `curam-membrane` (TS drivers) | spawns `curam-membrane` over `mem/1` |
+| `pi-curam-security` (TS drivers) | spawns `curam-membrane` over `mem/1` |
 
 `curam-harness-rs` depends on this repo by relative path
 (`../curam-security/crates/curam-core`), so it must be cloned as a sibling

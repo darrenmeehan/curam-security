@@ -13,7 +13,7 @@ proves the security boundary actually holds:
   7. fail-closed: missing curam-run => shell refuses, no silent unsandboxed run
   8. read/write/edit tools are unaffected (host-side)
 
-Usage:  cd ~/code/curam/curam-harness && python3 ~/code/curam-security/harness-wiring/check_wiring.py
+Usage:  cd ~/code/curam/curam-harness-poc && python3 ~/code/curam-security/harness-wiring/check_wiring.py
 """
 
 import os

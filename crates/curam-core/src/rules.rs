@@ -1,4 +1,4 @@
-//! Versioned policy rules — a 1:1 port of curam-harness `policy.py`.
+//! Versioned policy rules — a 1:1 port of curam-harness-poc `policy.py`.
 //!
 //! This module is the single source of the allow/ask/deny tables. Parity with
 //! the Python original is guarded by the fixture in `tests/parity_fixture.json`

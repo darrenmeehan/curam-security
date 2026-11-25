@@ -11,7 +11,7 @@ import re
 import shlex
 import sys
 
-sys.path.insert(0, "/home/darrenmeehan/code/curam/curam-harness")
+sys.path.insert(0, "/home/darrenmeehan/code/curam/curam-harness-poc")
 
 # Break the literal out so guard-git's dangerous-pattern scan doesn't flag
 # this file as a reset --hard command, while the fixture still holds the real

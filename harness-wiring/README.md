@@ -1,16 +1,16 @@
 # Harness wiring for the curam-run cage (T7) + verdict journal
 
-Drops the curam-run sandbox into `curam-harness` and makes the shell tool's
+Drops the curam-run sandbox into `curam-harness-poc` and makes the shell tool's
 **provable verdict chain** land in the session journal.
 
 ## Files in this directory
 
 | File | Role | Installed to |
 | --- | --- | --- |
-| `cage.py` | minimal ndjson client for the `cage/1` contract (no curam imports — T6) | `curam-harness/cage.py` |
-| `tools.py` | tilts the harness `shell` tool to run inside the cage (fail-closed); returns `{ok, exit, stdout, stderr, cages, verdicts, timed_out}` | `curam-harness/tools.py` |
+| `cage.py` | minimal ndjson client for the `cage/1` contract (no curam imports — T6) | `curam-harness-poc/cage.py` |
+| `tools.py` | tilts the harness `shell` tool to run inside the cage (fail-closed); returns `{ok, exit, stdout, stderr, cages, verdicts, timed_out}` | `curam-harness-poc/tools.py` |
 | `apply.sh` | one-command installer: backs up tools.py + agent.py, copies cage.py + tools.py, patches agent.py to journal verdicts (idempotent) | run from this dir |
-| `check_wiring.py` | thorough post-wiring test (runs the exact `tools.run` path the agent uses) | standalone, run from `curam-harness` |
+| `check_wiring.py` | thorough post-wiring test (runs the exact `tools.run` path the agent uses) | standalone, run from `curam-harness-poc` |
 | `README.md` | this file |
 
 ## What the wiring does
@@ -55,7 +55,7 @@ originals. Re-running is safe (idempotent — skips already-patched agent.py).
 ## Verify
 
 ```bash
-cd ~/code/curam/curam-harness
+cd ~/code/curam/curam-harness-poc
 python3 -m py_compile agent.py tools.py cage.py
 python3 ~/code/curam-security/harness-wiring/check_wiring.py
 ```

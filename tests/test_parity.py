@@ -8,7 +8,7 @@ import sys
 
 import curamsec
 
-HARNESS = "/home/darrenmeehan/code/curam/curam-harness"
+HARNESS = "/home/darrenmeehan/code/curam/curam-harness-poc"
 
 # Commands exercising every rule branch (mirrors scripts/gen_parity_fixture.py).
 CASES = [
