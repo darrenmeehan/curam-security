@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0 OR MIT"
 description = "curam security core (pure Rust): classify / scan_context / match_host / check_pkg + verified lists"
+repository = "https://github.com/darrenmeehan/curam-security"
+readme = "README.md"
+keywords = ["security", "sandbox", "policy", "agent", "audit"]
+categories = ["security", "development-tools"]
 
 [lib]
 name = "curam_core"
