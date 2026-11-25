@@ -128,7 +128,7 @@ fn nft_ruleset(country: &str, cidrs: &[String]) -> String {
 
 /// Base bwrap isolation: pid ns, system dirs read-only, tmpfs /tmp + /run.
 fn bwrap_base() -> Vec<String> {
-    vec![
+    let mut a: Vec<String> = vec![
         "bwrap".into(),
         "--die-with-parent".into(),
         "--unshare-pid".into(),
@@ -150,9 +150,13 @@ fn bwrap_base() -> Vec<String> {
         "--ro-bind".into(),
         "/sbin".into(),
         "/sbin".into(),
-        "--ro-bind".into(),
-        "/nix".into(),
-        "/nix".into(),
+    ];
+    // NixOS-only. A ro-bind whose source is missing aborts bwrap outright
+    // ("Can't find source path"), and /nix does not exist on a stock distro.
+    if std::path::Path::new("/nix").exists() {
+        a.extend(["--ro-bind".into(), "/nix".into(), "/nix".into()]);
+    }
+    a.extend([
         "--tmpfs".into(),
         "/tmp".into(),
         "--tmpfs".into(),
@@ -163,7 +167,8 @@ fn bwrap_base() -> Vec<String> {
         "/proc".into(),
         "--dev".into(),
         "/dev".into(),
-    ]
+    ]);
+    a
 }
 
 /// Build the bwrap argv for a request.
@@ -574,6 +579,22 @@ mod tests {
         let req_net = Request { net: true, ..req };
         let a2 = bwrap_argv(&req_net, None);
         assert!(!a2.contains(&"--unshare-net".to_string()));
+    }
+
+    #[test]
+    fn bwrap_base_binds_only_existing_paths() {
+        // A ro-bind whose source is missing aborts bwrap outright, so the base
+        // list must stay portable between NixOS and a stock distro.
+        let a = bwrap_base();
+        for w in a.windows(3) {
+            if w[0] == "--ro-bind" {
+                assert!(
+                    std::path::Path::new(&w[1]).exists(),
+                    "missing bind source: {}",
+                    w[1]
+                );
+            }
+        }
     }
 
     #[test]
