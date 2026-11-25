@@ -154,20 +154,22 @@ def test_check_pkg_flags_vuln_and_clean():
 
 def test_cage_echo():
     r = Cage().run(["bash", "-c", "echo cage-hi"])
-    assert r["exit"] == 0
+    assert r["exit"] == 0, r["stderr"]
     assert r["stdout"].strip() == "cage-hi"
     assert "bwrap:ro-system" in r["cages"]
 
 
 def test_cage_timeout_kills():
     r = Cage().run(["bash", "-c", "sleep 30"], timeout_s=1)
-    assert r["timed_out"] is True
+    assert r["timed_out"] is True, r["stderr"]
     assert r["exit"] != 0
 
 
 def test_cage_egress_denied_net_off():
     r = Cage().run(["bash", "-c", "wget -T 3 https://example.com 2>&1; echo rc=$?"])
-    assert "rc=4" in r["stdout"] or "unreachable" in r["stdout"], r["stdout"]
+    assert "rc=4" in r["stdout"] or "unreachable" in r["stdout"], (
+        r["stdout"], r["stderr"]
+    )
 
 
 def test_cage_verdicts_deny_beats_allow():
@@ -189,7 +191,7 @@ def test_cage_writable_bind(tmp_path):
         cwd=host,
         bind=[f"{host}:{host}"],
     )
-    assert r["exit"] == 0
+    assert r["exit"] == 0, r["stderr"]
     assert r["stdout"].strip() == "from-cage"
     assert (host / "out.txt").read_text().strip() == "from-cage"
 

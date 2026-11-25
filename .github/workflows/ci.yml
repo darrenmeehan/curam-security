@@ -46,6 +46,17 @@ jobs:
           maturin build --interpreter python --out dist
           python -m pip install dist/curamsec-*.whl
 
+      - name: Diagnose bwrap
+        run: |
+          echo "--- sysctls ---"
+          sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone user.max_user_namespaces 2>&1 || true
+          echo "--- apparmor profiles ---"
+          ls /etc/apparmor.d/ 2>&1 | head -20 || true
+          echo "--- bwrap version ---"
+          bwrap --version
+          echo "--- trivial bwrap ---"
+          bwrap --unshare-all --dev-bind / / true; echo "exit=$?"
+
       - name: Python tests (curamsec + cage + contract replay)
         env:
           CURAM_RUN_BIN: ${{ github.workspace }}/target/debug/curam-run
