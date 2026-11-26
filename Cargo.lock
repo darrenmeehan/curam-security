@@ -68,6 +68,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "curam-cage"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "curam-core"
 version = "0.1.0"
 dependencies = [
@@ -85,13 +92,6 @@ dependencies = [
  "rusqlite",
  "serde_json",
  "sha2",
-]
-
-[[package]]
-name = "curam-run"
-version = "0.1.0"
-dependencies = [
- "serde_json",
 ]
 
 [[package]]

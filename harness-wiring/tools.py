@@ -1,6 +1,6 @@
 """Tools available to the model: read / write / edit / shell.
 
-Shell runs inside the curam-run bwrap cage (sandbox): system dirs are
+Shell runs inside the curam-cage bwrap cage (sandbox): system dirs are
 read-only, only the workdir + home are writable binds, net off unless
 requested, commands time out. If the cage binary is unavailable or a
 request fails, shell silently falls back to a raw subprocess so daily use
@@ -196,8 +196,8 @@ def tool_shell(workdir: Path, args: dict, timeout_default: int = 60) -> dict:
     # daily agent work (pip/git/cargo/npm) keeps working; system dirs stay
     # read-only, only workdir + home are writable binds.
     bin_path = os.environ.get(
-        "CURAM_RUN_BIN",
-        str(Path.home() / "code/curam-security/target/debug/curam-run"),
+        "CURAM_CAGE_BIN",
+        str(Path.home() / "code/curam-security/target/debug/curam-cage"),
     )
     gate = cage.Cage(bin_path)
     r = gate.run(
@@ -209,15 +209,15 @@ def tool_shell(workdir: Path, args: dict, timeout_default: int = 60) -> dict:
     )
     if r is None:
         # Fail closed: no cage, no unsandboxed shell. Build the binary once
-        # (cargo build --bin curam-run in ~/code/curam-security) or point
-        # CURAM_RUN_BIN at an existing build.
+        # (cargo build --bin curam-cage in ~/code/curam-security) or point
+        # CURAM_CAGE_BIN at an existing build.
         return {
             "ok": False,
             "error": (
-                f"curam-run unavailable at {bin_path} — shell is the cage "
+                f"curam-cage unavailable at {bin_path} — shell is the cage "
                 "and refuses to run unsandboxed. Build it: "
-                "cargo build --bin curam-run (in ~/code/curam-security) "
-                "or set CURAM_RUN_BIN to an existing binary."
+                "cargo build --bin curam-cage (in ~/code/curam-security) "
+                "or set CURAM_CAGE_BIN to an existing binary."
             ),
         }
     if r.get("timed_out"):

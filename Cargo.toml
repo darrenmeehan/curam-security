@@ -5,10 +5,10 @@
 #   crates/curamsec   — pyo3 shim: abi3 wheel surface over curam-core
 #                       (classify / scan_context / match_host / check_pkg
 #                       + Verdict / Finding / HostMatcherPy / Advisory).
-#   bin/curam-run     — the bwrap cage binary (ndjson cage/1 contract).
+#   bin/curam-cage     — the bwrap cage binary (ndjson cage/1 contract).
 
 [workspace]
-members = ["crates/curam-core", "crates/curamsec", "bin/curam-run", "bin/curam-membrane"]
+members = ["crates/curam-core", "crates/curamsec", "bin/curam-cage", "bin/curam-membrane"]
 
 [profile.release]
 lto = true

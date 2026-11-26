@@ -2,7 +2,7 @@
 
 ## Scope
 
-**curamsec** (Python extension + `curam-run` binary) is a security boundary
+**curamsec** (Python extension + `curam-cage` binary) is a security boundary
 for a coding-agent harness: command classification, egress/country control,
 and verified feed lists. This file covers the core and the repo. The harness
 that consumes it has its own policy and journaling.
@@ -18,7 +18,7 @@ privately instead:
 
 Please include:
 
-- the affected version (`curamsec.__version__` / `curam-run` build),
+- the affected version (`curamsec.__version__` / `curam-cage` build),
 - a minimal repro (commands, list files, config),
 - impact you observed (what an attacker can do).
 
@@ -29,7 +29,7 @@ days of triage.
 
 - `classify` / `scan_context` / `match_host`: in-process heuristics — a
   *layer*, not a proof. `unknown` always degrades to `ask`, never hard-block.
-- `curam-run` (bwrap cage): the real boundary. Net off by default; system
+- `curam-cage` (bwrap cage): the real boundary. Net off by default; system
   dirs read-only; only explicitly-bound paths are writable. The cage is
   unprivileged (user namespaces) — it contains, it is not a kernel
   security module.
@@ -48,7 +48,7 @@ days of triage.
 ## Security-sensitive areas (for contributors)
 
 - `src/lists.rs` — pin/hash/atomic/rev (tamper at ANY stage must fail)
-- `src/bin/curam_run.rs` — bwrap argv construction, netns, geo ruleset
+- `src/bin/curam_cage.rs` — bwrap argv construction, netns, geo ruleset
 - `harness-wiring/` — the default is fail-closed: no cage, no unsandboxed
   shell. Keep it that way.
 

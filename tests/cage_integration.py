@@ -3,7 +3,7 @@
 
 The boundary exists as a binary: egress denied (net off), rm /etc/passwd
 denied (protect-system ro), localhost allowed, timeout -> timed_out.
-Runs the full curam-run ndjson round-trip for each scenario.
+Runs the full curam-cage ndjson round-trip for each scenario.
 """
 
 import json
@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BIN = REPO / "target" / "debug" / "curam-run"
+BIN = REPO / "target" / "debug" / "curam-cage"
 
 
 def cage(cmd, timeout_s=10, net=False, geo=None):
@@ -112,7 +112,7 @@ def check_geo_block():
 
 
 def main():
-    assert BIN.exists(), f"build first: cargo build --bin curam-run ({BIN})"
+    assert BIN.exists(), f"build first: cargo build --bin curam-cage ({BIN})"
     check_egress_denied()
     check_rm_passwd_denied()
     check_localhost_allowed()

@@ -1,6 +1,6 @@
-# Harness wiring for the curam-run cage (T7) + verdict journal
+# Harness wiring for the curam-cage cage (T7) + verdict journal
 
-Drops the curam-run sandbox into `curam-harness-poc` and makes the shell tool's
+Drops the curam-cage sandbox into `curam-harness-poc` and makes the shell tool's
 **provable verdict chain** land in the session journal.
 
 ## Files in this directory
@@ -18,7 +18,7 @@ Drops the curam-run sandbox into `curam-harness-poc` and makes the shell tool's
 - **`tool_shell` = the cage.** Every shell command the agent runs spawns a
   fresh bwrap cage: net on by default (daily pip/git/cargo still work),
   workdir + home writable binds, system dirs read-only, `/tmp`/`/run` tmpfs,
-  timeout enforced. **Fail-closed:** if curam-run is missing, shell refuses
+  timeout enforced. **Fail-closed:** if curam-cage is missing, shell refuses
   rather than silently running unsandboxed.
 - **Verdict chain journaled.** The cage already produced the provable chain
   `{action, rule_id, source, source_hash, evidence}` per command. `tools.py`
@@ -67,7 +67,7 @@ run), and that `cages`/`verdicts` flow through in journal-ready shape.
 
 ## Tuning
 
-- **Point at a different curam-run build**: `export CURAM_RUN_BIN=/path/to/curam-run`.
+- **Point at a different curam-cage build**: `export CURAM_CAGE_BIN=/path/to/curam-cage`.
 - **Harder cage**: `net: false` / `geo: "COUNTRY"` per request (see `proto/ndjson-spec.md`).
 - **See the journal rows**: `sqlite3 ~/.local/share/curam/curam.db "select etype,payload from events where etype='tool_verdicts' limit 10"`.
 

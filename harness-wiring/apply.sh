@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wire the curam-run cage into the harness shell tool + journal.
+# Wire the curam-cage cage into the harness shell tool + journal.
 #
 # 1. Copies cage.py (ndjson client) + tools.py (shell = the cage, fail-closed)
 # 2. Patches agent.py to journal the verdict chain (provable audibility)
@@ -15,9 +15,9 @@ if [ ! -d "$HARNESS" ]; then
     echo "harness dir not found: $HARNESS (set CURAM_HARNESS_DIR)"
     exit 1
 fi
-if [ ! -x "$HOME/code/curam-security/target/debug/curam-run" ]; then
-    echo "curam-run not built — building it first:"
-    (cd "$HOME/code/curam-security" && cargo build --bin curam-run)
+if [ ! -x "$HOME/code/curam-security/target/debug/curam-cage" ]; then
+    echo "curam-cage not built — building it first:"
+    (cd "$HOME/code/curam-security" && cargo build --bin curam-cage)
 fi
 
 cp "$HARNESS/tools.py" "$HARNESS/tools.py.bak-$(date +%s)"

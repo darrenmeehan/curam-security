@@ -1,6 +1,6 @@
 # ndjson contract v1 (`cage/1`)
 
-curam-run speaks one request per line on stdin, one result per line on
+curam-cage speaks one request per line on stdin, one result per line on
 stdout. The contract is transport-agnostic: any consumer that speaks this
 schema can drive the cage (T6 property — replayable without curam's code).
 
@@ -65,7 +65,7 @@ Errors (bad envelope, unreadable geo list) come back as a single-line
 
 ## Geo (e01s07)
 
-`geo: "RU"` makes curam-run:
+`geo: "RU"` makes curam-cage:
 
 1. read `<lists>/geo/RU/list.json` — the verified lists pipeline schema
    (`{rev, entries}`) where `entries` are CIDR strings;

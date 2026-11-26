@@ -1,8 +1,8 @@
-"""curam-run ndjson client — the cage seam (proto/ndjson-spec.md, cage/1).
+"""curam-cage ndjson client — the cage seam (proto/ndjson-spec.md, cage/1).
 
 The harness speaks the documented contract over stdio; it does NOT import
 any curam code (T6: the contract replayable by any consumer). Each run()
-spawns curam-run once, sends one request line, reads one result line.
+spawns curam-cage once, sends one request line, reads one result line.
 
 Silent degrade: if the binary is missing or a request fails, run() returns
 None so the harness shell falls back to a raw subprocess (daily use never

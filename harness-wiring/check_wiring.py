@@ -10,7 +10,7 @@ proves the security boundary actually holds:
   4. system dirs are read-only — rm /etc/passwd, touch /usr FAIL
   5. egress: net is ON (harness default) so reachable hosts work
   6. timeout still kills (via the harness timeout param)
-  7. fail-closed: missing curam-run => shell refuses, no silent unsandboxed run
+  7. fail-closed: missing curam-cage => shell refuses, no silent unsandboxed run
   8. read/write/edit tools are unaffected (host-side)
 
 Usage:  cd ~/code/curam/curam-harness-poc && python3 ~/code/curam-security/harness-wiring/check_wiring.py
@@ -129,10 +129,10 @@ def main() -> None:
         check(elapsed < 10, "killed promptly")
 
         # -- 7. fail-closed: no cage binary => shell refuses ----------------
-        print("-- fail-closed (missing curam-run) --")
-        os.environ["CURAM_RUN_BIN"] = "/nonexistent/curam-run"
+        print("-- fail-closed (missing curam-cage) --")
+        os.environ["CURAM_CAGE_BIN"] = "/nonexistent/curam-cage"
         s = cage_shell(wd, "echo should-not-run > escaped.txt; exit 0")
-        os.environ.pop("CURAM_RUN_BIN", None)
+        os.environ.pop("CURAM_CAGE_BIN", None)
         check(not s["ok"], "shell refused without a cage")
         check("cage" in s.get("error", ""), "error explains the cage is required")
         # If the shell had silently fallen back to a raw unsandboxed subprocess,

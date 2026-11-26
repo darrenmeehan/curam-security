@@ -14,7 +14,7 @@ topology and why it is split this way.
 | --- | --- | --- |
 | `crates/curam-core` | library | Pure-Rust detection logic: `classify`, `scan_context`, `match_host`, `check_pkg`, the scrubber, verified lists. No FFI, no Python, no I/O policy. |
 | `crates/curamsec` | pyo3 cdylib | The abi3 wheel surface over `curam-core`. This is what the Python harness imports. |
-| `bin/curam-run` | binary | The bwrap cage. `cage/1` NDJSON over stdio. |
+| `bin/curam-cage` | binary | The bwrap cage. `cage/1` NDJSON over stdio. |
 | `bin/curam-membrane` | binary | The boundary engine. `mem/1` NDJSON over stdio. |
 
 The one design rule: **no detection logic lives outside `curam-core`.** Every
@@ -27,7 +27,7 @@ Both are NDJSON over stdio — one request per line in, one result per line out,
 replayable by any consumer without linking the crate. Full spec in
 [`proto/ndjson-spec.md`](proto/ndjson-spec.md).
 
-- **`cage/1`** — `curam-run`. Sandboxed execution. Request carries the command
+- **`cage/1`** — `curam-cage`. Sandboxed execution. Request carries the command
   and the bind plan; the result carries the exit code, timings, and the
   verdicts produced along the way.
 - **`mem/1`** — `curam-membrane`. The boundary engine. Ops: `mask`, `scan`,
@@ -38,7 +38,7 @@ replayable by any consumer without linking the crate. Full spec in
 
 ```bash
 nix develop            # Rust + Python + maturin + bwrap
-cargo build --release  # curam-run and curam-membrane
+cargo build --release  # curam-cage and curam-membrane
 cargo test             # unit tests
 ```
 
@@ -69,8 +69,8 @@ Python implementations honest against each other.
 
 | Consumer | How it reaches the core |
 | --- | --- |
-| `curam-harness-poc` (Python) | imports the `curamsec` wheel; spawns `curam-run` |
-| `curam-harness-rs` (Rust) | [published `curam-core`](https://crates.io/crates/curam-core); spawns `curam-run` |
+| `curam-harness-poc` (Python) | imports the `curamsec` wheel; spawns `curam-cage` |
+| `curam-harness-rs` (Rust) | [published `curam-core`](https://crates.io/crates/curam-core); spawns `curam-cage` |
 | `pi-curam-security` (TS drivers) | spawns `curam-membrane` over `mem/1` |
 
 `curam-harness-rs` links the [published `curam-core`](https://crates.io/crates/curam-core)

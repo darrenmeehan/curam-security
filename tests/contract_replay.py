@@ -2,15 +2,15 @@
 """e01s06 task 2 — ndjson contract v1 replay (T6 property).
 
 The contract is transport-agnostic: a stub consumer in ANOTHER language
-(node) drives curam-run over stdio and validates the result envelope,
+(node) drives curam-cage over stdio and validates the result envelope,
 without importing curam's code. This script:
   1. builds a request per the v1 schema,
-  2. pipes it to curam-run (Rust binary),
+  2. pipes it to curam-cage (Rust binary),
   3. asserts the result envelope shape + echo,
   4. with --stub node, replays the same request through an inline node
      consumer and asserts the same envelope (proving language-agnostic).
 
-Usage: python3 tests/contract_replay.py [--stub node] [--curam-run PATH]
+Usage: python3 tests/contract_replay.py [--stub node] [--curam-cage PATH]
 """
 
 import argparse
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-DEFAULT_BIN = REPO / "target" / "debug" / "curam-run"
+DEFAULT_BIN = REPO / "target" / "debug" / "curam-cage"
 
 REQUEST = {
   "id": 1,
@@ -100,12 +100,12 @@ def replay_node(bin_path):
 def main():
   ap = argparse.ArgumentParser()
   ap.add_argument("--stub", choices=["node"], default=None)
-  ap.add_argument("--curam-run", default=str(DEFAULT_BIN))
+  ap.add_argument("--curam-cage", default=str(DEFAULT_BIN))
   args = ap.parse_args()
 
-  bin_path = Path(args.curam_run)
+  bin_path = Path(args.curam_cage)
   assert bin_path.exists(), (
-    f"curam-run not built: {bin_path} (cargo build --bin curam-run)"
+    f"curam-cage not built: {bin_path} (cargo build --bin curam-cage)"
   )
 
   replay_python(bin_path)

@@ -1,7 +1,7 @@
-//! curam-run — standalone bwrap cage binary (e01s06).
+//! curam-cage — standalone bwrap cage binary (e01s06).
 //!
 //! Two modes:
-//!   1. CLI:  curam-run [--net] -- cmd...   (run once, print stdout, exit code)
+//!   1. CLI:  curam-cage [--net] -- cmd...   (run once, print stdout, exit code)
 //!   2. ndjson over stdio (default when stdin is not a tty and -- given):
 //!      one request per line: {id, v, cmd, cwd, timeout_s, net, allow_hosts, deny_hosts}
 //!      one result per line:  {id, exit, stdout, stderr, timed_out, cages, verdicts}
@@ -288,7 +288,7 @@ fn run_caged(req: &Request) -> Result_ {
             }
             let rules = nft_ruleset(country, &cidrs);
             let path = std::env::temp_dir().join(format!(
-                "curam-run-geo-{country}-{}.rules",
+                "curam-cage-geo-{country}-{}.rules",
                 std::process::id()
             ));
             if let Err(e) = std::fs::write(&path, rules.as_bytes()) {
@@ -407,13 +407,13 @@ fn main() {
                 } else if let Some(c) = f.strip_prefix("--geo=") {
                     geo = Some(c.to_string());
                 } else if f == "--geo" {
-                    eprintln!("curam-run: --geo needs =COUNTRY (e.g. --geo=RU)");
+                    eprintln!("curam-cage: --geo needs =COUNTRY (e.g. --geo=RU)");
                     std::process::exit(2);
                 }
             }
             cli = args[i + 1..].to_vec();
             if cli.is_empty() {
-                eprintln!("curam-run: no command after --");
+                eprintln!("curam-cage: no command after --");
                 std::process::exit(2);
             }
             let req = Request {

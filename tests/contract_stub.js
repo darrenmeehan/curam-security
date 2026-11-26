@@ -2,21 +2,21 @@
 // e01s09 task 2 — contract stub in node (T6).
 //
 // A consumer in another language re-plays the cage/1 ndjson contract
-// against curam-run WITHOUT importing any curam code. This file knows only
+// against curam-cage WITHOUT importing any curam code. This file knows only
 // the documented schema (proto/ndjson-spec.md): it builds a request, pipes
 // it over stdio, parses the result, and asserts the envelope — then exits
 // 0. Proves the contract is language-agnostic.
 //
-// Usage: node tests/contract_stub.js [path-to-curam-run]
+// Usage: node tests/contract_stub.js [path-to-curam-cage]
 
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
 
 const bin =
-  process.argv[2] || path.join(__dirname, "..", "target", "debug", "curam-run");
+  process.argv[2] || path.join(__dirname, "..", "target", "debug", "curam-cage");
 if (!fs.existsSync(bin)) {
-  console.error(`curam-run not built: ${bin}`);
+  console.error(`curam-cage not built: ${bin}`);
   process.exit(2);
 }
 
@@ -96,7 +96,7 @@ run.on("close", (code) => {
     process.exit(1);
   }
   if (code !== 0) {
-    console.error(`curam-run exited ${code}`);
+    console.error(`curam-cage exited ${code}`);
     process.exit(1);
   }
   console.log("node contract stub OK");

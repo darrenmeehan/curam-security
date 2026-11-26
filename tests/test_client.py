@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""e01s09 — test client: the reusable driver for curamsec + curam-run.
+"""e01s09 — test client: the reusable driver for curamsec + curam-cage.
 
 This is the module the harness will wire in (T7): it owns the ndjson
-framing to curam-run and the in-process curamsec calls, and asserts the
+framing to curam-cage and the in-process curamsec calls, and asserts the
 verdict chain shape. Tests here prove the core standalone.
 
 Client surface:
@@ -22,7 +22,7 @@ from pathlib import Path
 import curamsec
 
 REPO = Path(__file__).resolve().parent.parent
-DEFAULT_BIN = REPO / "target" / "debug" / "curam-run"
+DEFAULT_BIN = REPO / "target" / "debug" / "curam-cage"
 ENVELOPE = "cage/1"
 
 RESULT_KEYS = {"id", "exit", "stdout", "stderr", "timed_out", "cages", "verdicts"}
@@ -30,7 +30,7 @@ VERDICT_KEYS = {"action", "rule_id", "source", "source_hash", "evidence"}
 
 
 class Cage:
-    """One-shot ndjson driver for curam-run. Each run() spawns the cage once,
+    """One-shot ndjson driver for curam-cage. Each run() spawns the cage once,
     feeds one request line, reads one result line. No persistent process, no
     framing state — the harness gets a clean boundary per command."""
 
@@ -38,7 +38,7 @@ class Cage:
         self.binary = Path(binary)
         if not self.binary.exists():
             raise FileNotFoundError(
-                f"curam-run not built: {self.binary} — run 'cargo build --bin curam-run'"
+                f"curam-cage not built: {self.binary} — run 'cargo build --bin curam-cage'"
             )
 
     def run(
@@ -78,7 +78,7 @@ class Cage:
             timeout=(timeout_s or 60) + 15,
         )
         if p.returncode != 0:
-            raise RuntimeError(f"curam-run exited {p.returncode}: {p.stderr}")
+            raise RuntimeError(f"curam-cage exited {p.returncode}: {p.stderr}")
         result = json.loads(p.stdout.strip().splitlines()[-1])
         if "error" in result:
             raise RuntimeError(f"cage error: {result['error']}")
