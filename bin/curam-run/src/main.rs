@@ -132,29 +132,17 @@ fn bwrap_base() -> Vec<String> {
         "bwrap".into(),
         "--die-with-parent".into(),
         "--unshare-pid".into(),
-        "--ro-bind".into(),
-        "/usr".into(),
-        "/usr".into(),
-        "--ro-bind".into(),
-        "/lib".into(),
-        "/lib".into(),
-        "--ro-bind".into(),
-        "/lib64".into(),
-        "/lib64".into(),
-        "--ro-bind".into(),
-        "/etc".into(),
-        "/etc".into(),
-        "--ro-bind".into(),
-        "/bin".into(),
-        "/bin".into(),
-        "--ro-bind".into(),
-        "/sbin".into(),
-        "/sbin".into(),
     ];
-    // NixOS-only. A ro-bind whose source is missing aborts bwrap outright
-    // ("Can't find source path"), and /nix does not exist on a stock distro.
-    if std::path::Path::new("/nix").exists() {
-        a.extend(["--ro-bind".into(), "/nix".into(), "/nix".into()]);
+    // A ro-bind whose source is missing aborts bwrap outright ("Can't find
+    // source path"), and the set differs per distro: /lib and /sbin are absent
+    // on NixOS, /nix is absent on a stock distro. Bind only what exists, so the
+    // same window on a NixOS host and on Debian both start. (This used to bind
+    // /usr /lib /lib64 /etc /bin /sbin unconditionally and special-case /nix,
+    // which meant the cage could not start on NixOS at all.)
+    for dir in ["/usr", "/lib", "/lib64", "/etc", "/bin", "/sbin", "/nix"] {
+        if std::path::Path::new(dir).exists() {
+            a.extend(["--ro-bind".to_owned(), dir.to_owned(), dir.to_owned()]);
+        }
     }
     a.extend([
         "--tmpfs".into(),
